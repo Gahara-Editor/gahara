@@ -1,0 +1,85 @@
+<script lang="ts">
+  import { createBooleanStore } from "../stores";
+
+  const store = createBooleanStore(false);
+  const { isOpen, open, close } = store;
+
+  function keydown(e: KeyboardEvent) {
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      close();
+    }
+  }
+
+  function transitionEnd(e: TransitionEvent) {
+    const node = e.target as HTMLElement;
+    node.focus();
+  }
+
+  function modalAction(node: HTMLElement) {
+    const returnFn = [];
+    // for accessibility
+    if (document.body.style.overflow !== "hidden") {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      returnFn.push(() => {
+        document.body.style.overflow = original;
+      });
+    }
+    node.addEventListener("keydown", keydown);
+    node.addEventListener("transitionend", transitionEnd);
+    node.focus();
+    returnFn.push(() => {
+      node.removeEventListener("keydown", keydown);
+      node.removeEventListener("transitionend", transitionEnd);
+    });
+    return {
+      destroy: () => returnFn.forEach((fn) => fn()),
+    };
+  }
+</script>
+
+<slot name="trigger" {open}>
+  <!-- fallback -->
+  <button on:click={open}> Open </button>
+</slot>
+
+{#if $isOpen}
+  <div
+    id="modal"
+    use:modalAction
+    class="fixed top-0 left-0 min-h-screen w-full flex justify-center items-center opacity-100"
+  >
+    <div
+      id="backdrop"
+      class="absolute w-full h-full opacity-40"
+      on:click={close}
+    />
+    <div
+      id="content-wrap"
+      class="z-10 max-w-[70vw] rounded-[0.3rem] bg-gblue0 overflow-hidden md:max-w-[100vw]"
+    >
+      <slot name="header">
+        <!-- fallback -->
+        <div>
+          <h1>Main Menu</h1>
+        </div>
+      </slot>
+
+      <div id="content" class="max-w-[50vh] overflow-hidden">
+        <slot name="content" {store} />
+      </div>
+
+      <slot name="footer" {store}>
+        <!-- fallback -->
+        <div>
+          <button
+            on:click={close}
+            class="rounded-lg bg-red-500 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-red-700 transition ease-in-out duration-200"
+            >close</button
+          >
+        </div>
+      </slot>
+    </div>
+  </div>
+{/if}
