@@ -33,7 +33,7 @@
   }
 
   function viewVideo(path: string) {
-    videoSrc = "file:/" + path;
+    videoSrc = path;
   }
 
   onDestroy(() => {

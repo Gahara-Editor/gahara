@@ -6,7 +6,7 @@
   let currentTime: number;
   let playbackRate: number;
   let volume: number;
-  let paused: boolean;
+  let paused: boolean = true;
   let ended: boolean;
   let muted: boolean;
   let seeking: boolean;
@@ -70,7 +70,7 @@
 
   function handleFullScreen() {
     if (document.fullscreenElement !== null) {
-      document.exitFullscreen();
+      document.exitFullscreen;
       videoContainer.setAttribute("data-fullscreen", "false");
     } else {
       videoContainer.requestFullscreen();
@@ -83,9 +83,7 @@
   <figure bind:this={videoContainer}>
     <video
       id="video"
-      preload="metadata"
       src={videoSrc}
-      poster={thumbnail}
       bind:this={video}
       bind:duration
       bind:buffered
