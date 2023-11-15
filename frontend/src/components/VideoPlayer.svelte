@@ -19,6 +19,7 @@
   let videoContainer: HTMLElement;
   let video: HTMLVideoElement;
   let progress: HTMLProgressElement;
+  let fullscreen: HTMLButtonElement;
 
   function setProgressMax() {
     progress.max = duration;
@@ -80,42 +81,43 @@
 </script>
 
 {#if videoSrc}
-  <figure bind:this={videoContainer}>
-    <video
-      id="video"
-      src={videoSrc}
-      bind:this={video}
-      bind:duration
-      bind:buffered
-      bind:played
-      bind:seekable
-      bind:seeking
-      bind:ended
-      bind:currentTime
-      bind:playbackRate
-      bind:paused
-      bind:volume
-      bind:muted
-      bind:videoWidth
-      bind:videoHeight
-      on:loadedmetadata={() => setProgressMax()}
-      on:timeupdate={() => progressBarUpdate()}
-    >
-      <track kind="captions" />
-    </video>
+  <figure
+    bind:this={videoContainer}
+    class="h-full w-full overflow-hidden bg-gblue0 p-4 flex flex-col rounded-md border-white border-2"
+  >
+    <div id="video-player" class="h-5/6">
+      <video
+        id="video"
+        class="block h-full w-full object-contain bg-gprimary rounded-md"
+        src={videoSrc}
+        bind:this={video}
+        bind:duration
+        bind:buffered
+        bind:played
+        bind:seekable
+        bind:seeking
+        bind:ended
+        bind:currentTime
+        bind:playbackRate
+        bind:paused
+        bind:volume
+        bind:muted
+        bind:videoWidth
+        bind:videoHeight
+        on:loadedmetadata={() => setProgressMax()}
+        on:timeupdate={() => progressBarUpdate()}
+      >
+        <track kind="captions" />
+      </video>
+    </div>
     <!-- Video Controls -->
-    <ul id="video-controls" class="controls">
-      <li>
-        <button id="playpause" type="button" on:click={() => handlePlayPause()}
-          >Play/Pause</button
-        >
-      </li>
-      <li>
-        <button id="stop" type="button" on:click={() => handleStop()}
-          >Stop</button
-        >
-      </li>
-      <li class="progress">
+    <div id="video-controls" class="flex items-center h-1/6">
+      <button id="playpause" type="button" on:click={() => handlePlayPause()}
+        >Play/Pause</button
+      >
+      <button id="stop" type="button" on:click={() => handleStop()}>Stop</button
+      >
+      <div class="progress">
         <progress
           id="progress"
           value="0"
@@ -124,27 +126,22 @@
         >
           <span id="progress-bar"></span>
         </progress>
-      </li>
-      <li>
-        <button id="mute" type="button" on:click={() => handleMute()}
-          >Mute/Unmute</button
-        >
-      </li>
-      <li>
-        <button id="volinc" type="button" on:click={() => handleVolume("+")}
-          >Vol+</button
-        >
-      </li>
-      <li>
-        <button id="voldec" type="button" on:click={() => handleVolume("-")}
-          >Vol-</button
-        >
-      </li>
-      <li>
-        <button id="fs" type="button" on:click={() => handleFullScreen()}
-          >Fullscreen</button
-        >
-      </li>
-    </ul>
+      </div>
+      <button id="mute" type="button" on:click={() => handleMute()}
+        >Mute/Unmute</button
+      >
+      <button id="volinc" type="button" on:click={() => handleVolume("+")}
+        >Vol+</button
+      >
+      <button id="voldec" type="button" on:click={() => handleVolume("-")}
+        >Vol-</button
+      >
+      <button
+        id="fs"
+        type="button"
+        bind:this={fullscreen}
+        on:click={() => handleFullScreen()}>Fullscreen</button
+      >
+    </div>
   </figure>
 {/if}
