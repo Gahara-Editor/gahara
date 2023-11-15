@@ -23,26 +23,27 @@ type Video struct {
 	FilePath string `json:"filepath"`
 }
 
-// createProxyFile: creates the proxy file to be used for editing
+// createProxyFile: creates the proxy file to be used for editing (preserve original media)
 func (a *App) createProxyFile(inputFile, fileName string) {
-	proxyFile := fmt.Sprintf("proxy-%s.mov", fileName)
+	proxyFile := fmt.Sprintf("%s.mov", fileName)
 	pathProxyFile := path.Join(a.config.ProjectDir, proxyFile)
 
 	// check that a proxy has not already been created for the file
 	_, err := os.Stat(pathProxyFile)
 	if os.IsNotExist(err) {
-		// create a proxy file to work better with editing
 		cmd := video.CreateProxyFileCMD(inputFile, pathProxyFile)
 		err := cmd.Run()
 		if err != nil {
 			wruntime.LogError(a.ctx, fmt.Sprintf("could not create the proxy file for %s: %s", inputFile, err.Error()))
 			return
 		}
+		wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file created: %s", fileName))
+		return
 	} else if err != nil {
 		wruntime.LogError(a.ctx, fmt.Sprintf("file finding error: %s", err.Error()))
 	}
 
-	wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file exists for file: %s", fileName))
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file found: %s", fileName))
 
 }
 
@@ -97,5 +98,4 @@ func (a *App) GenerateThumbnail(inputFile string) ([]byte, error) {
 
 	// read image and send it
 	return []byte("image"), nil
-
 }
