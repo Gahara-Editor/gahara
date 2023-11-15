@@ -42,10 +42,10 @@
 </script>
 
 <div class="h-full text-white rounded-md bg-red-500">
-  <div class="flex items-center">
+  <div class="flex items-start gap-2 p-4">
     <!-- Video Uploading -->
     <div
-      class=" flex flex-col text-white rounded-md bg-gblue0 border-white border-2 p-2 gap-2 w-1/2"
+      class="flex flex-col text-white rounded-md bg-gblue0 border-white border-2 p-2 gap-2 w-1/4 h-fit"
     >
       <div class="flex items-center gap-2">
         <Modal>
@@ -89,10 +89,10 @@
         </button>
       </div>
       {#if videoFiles}
-        <ul class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2">
           {#each $videoFiles as video (video.name)}
-            <li
-              class="flex justify-between items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab w-auto transition ease-in-out duration-500 gap-2"
+            <div
+              class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2"
               on:click={() => viewVideo(video.filepath)}
             >
               <button
@@ -101,18 +101,17 @@
               >
                 <XIcon class="h-3 w-3 text-white" />
               </button>
-
-              <p>{video.name}</p>
-            </li>
+              <p class="text-sm">{video.name}</p>
+            </div>
           {/each}
-        </ul>
+        </div>
       {/if}
     </div>
     {#if fileUploadError}
       {fileUploadError}
     {/if}
     <!-- Video Player -->
-    <div id="video-player" class="w-1/2">
+    <div id="video-player" class="h-[36rem] w-3/4">
       <VideoPlayer {videoSrc} {thumbnail} />
     </div>
   </div>
