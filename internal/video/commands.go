@@ -9,13 +9,11 @@ import (
 	"github.com/k1nho/gahara/internal/utils"
 )
 
-// CreateProxyFile: creates a lightweight file from the original to work more efficiently with the given video clip
+// CreateProxyFile: creates a copy file from the original to preserve original and work with the given video clip
 func CreateProxyFileCMD(path, pathProxyFile string) *exec.Cmd {
 	return exec.Command("ffmpeg",
 		"-i", path, // input
-		"-c:v", "libx264", // codec H.264
-		"-crf", "23", // higher number is worst quality
-		"-c:a", "aac", // audio
+		"-codec", "copy",
 		"-strict", "experimental",
 		pathProxyFile)
 
