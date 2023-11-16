@@ -1,14 +1,21 @@
 <script lang="ts">
+  import {
+    PlayIcon,
+    PauseIcon,
+    StopIcon,
+    DesktopComputerIcon,
+  } from "@rgossiaux/svelte-heroicons/solid";
+  import SpeakerIcon from "../icons/SpeakerIcon.svelte";
+  import MutedIcon from "../icons/MutedIcon.svelte";
   export let videoSrc: string;
-  export let thumbnail: string;
 
   let duration: number;
   let currentTime: number;
   let playbackRate: number;
   let volume: number;
   let paused: boolean = true;
-  let ended: boolean;
-  let muted: boolean;
+  let ended: boolean = false;
+  let muted: boolean = false;
   let seeking: boolean;
   let buffered: TimeRanges;
   let played: TimeRanges;
@@ -30,7 +37,6 @@
       progress.max = duration;
     }
     progress.value = currentTime;
-    progress.style.width = `${Math.floor((currentTime * 100) / duration)}%`;
   }
 
   function progressSkipAhead(
@@ -59,6 +65,7 @@
 
   function handleMute() {
     muted = !muted;
+    console.log("muted ", muted);
   }
 
   function handleVolume(dir: string) {
@@ -111,14 +118,23 @@
       </video>
     </div>
     <!-- Video Controls -->
-    <div id="video-controls" class="flex items-center h-1/6">
-      <button id="playpause" type="button" on:click={() => handlePlayPause()}
-        >Play/Pause</button
-      >
-      <button id="stop" type="button" on:click={() => handleStop()}>Stop</button
-      >
-      <div class="progress">
+    <div
+      id="video-controls"
+      class="h-1/6 flex gap-2 items-center justify-center"
+    >
+      <button id="playpause" type="button" on:click={() => handlePlayPause()}>
+        {#if paused || ended}
+          <PlayIcon class="h-8 w-8 text-white duration-200 ease-in-out" />
+        {:else}
+          <PauseIcon class="h-8 w-8 text-white" />
+        {/if}
+      </button>
+      <button id="stop" type="button" on:click={() => handleStop()}>
+        <StopIcon class="h-8 w-8 text-white" />
+      </button>
+      <div class="cursor-pointer h-6 w-full">
         <progress
+          class="h-full w-full [&::-webkit-progress-bar]:rounded-sm [&::-webkit-progress-value]:rounded-sm [&::-webkit-progress-bar]:bg-slate-300 [&::-webkit-progress-value]:bg-gred1 [&::-moz-progress-bar]:bg-gred1"
           id="progress"
           value="0"
           bind:this={progress}
@@ -127,9 +143,13 @@
           <span id="progress-bar"></span>
         </progress>
       </div>
-      <button id="mute" type="button" on:click={() => handleMute()}
-        >Mute/Unmute</button
-      >
+      <button id="mute" type="button" on:click={() => handleMute()}>
+        {#if muted}
+          <MutedIcon />
+        {:else}
+          <SpeakerIcon />
+        {/if}
+      </button>
       <button id="volinc" type="button" on:click={() => handleVolume("+")}
         >Vol+</button
       >
@@ -140,8 +160,10 @@
         id="fs"
         type="button"
         bind:this={fullscreen}
-        on:click={() => handleFullScreen()}>Fullscreen</button
+        on:click={() => handleFullScreen()}
       >
+        <DesktopComputerIcon class="h-8 w-8 text-white" />
+      </button>
     </div>
   </figure>
 {/if}

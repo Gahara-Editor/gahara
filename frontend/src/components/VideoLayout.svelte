@@ -112,7 +112,7 @@
     {/if}
     <!-- Video Player -->
     <div id="video-player" class="h-[36rem] w-3/4">
-      <VideoPlayer {videoSrc} {thumbnail} />
+      <VideoPlayer {videoSrc} />
     </div>
   </div>
   <!-- Timeline -->
