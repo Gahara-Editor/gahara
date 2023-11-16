@@ -106,10 +106,12 @@
           {/each}
         </div>
       {/if}
+      {#if fileUploadError}
+        <div>
+          {fileUploadError}
+        </div>
+      {/if}
     </div>
-    {#if fileUploadError}
-      {fileUploadError}
-    {/if}
     <!-- Video Player -->
     <div id="video-player" class="h-[36rem] w-3/4">
       <VideoPlayer {videoSrc} />

@@ -12,7 +12,7 @@
   let duration: number;
   let currentTime: number;
   let playbackRate: number;
-  let volume: number;
+  let volume: number = 0.5;
   let paused: boolean = true;
   let ended: boolean = false;
   let muted: boolean = false;
@@ -27,6 +27,8 @@
   let video: HTMLVideoElement;
   let progress: HTMLProgressElement;
   let fullscreen: HTMLButtonElement;
+
+  $: muted = volume <= 0;
 
   function setProgressMax() {
     progress.max = duration;
@@ -65,15 +67,6 @@
 
   function handleMute() {
     muted = !muted;
-    console.log("muted ", muted);
-  }
-
-  function handleVolume(dir: string) {
-    if (dir === "+" && volume < 1) {
-      volume += 0.1;
-    } else if (dir === "-" && volume > 0) {
-      volume -= 0.1;
-    }
   }
 
   function handleFullScreen() {
@@ -87,12 +80,12 @@
   }
 </script>
 
-{#if videoSrc}
-  <figure
-    bind:this={videoContainer}
-    class="h-full w-full overflow-hidden bg-gblue0 p-4 flex flex-col rounded-md border-white border-2"
-  >
-    <div id="video-player" class="h-5/6">
+<figure
+  bind:this={videoContainer}
+  class="h-full w-full overflow-hidden bg-gblue0 p-4 flex flex-col rounded-md border-white border-2"
+>
+  <div id="video-player" class="h-5/6">
+    {#if videoSrc}
       <video
         id="video"
         class="block h-full w-full object-contain bg-gprimary rounded-md"
@@ -116,15 +109,19 @@
       >
         <track kind="captions" />
       </video>
-    </div>
-    <!-- Video Controls -->
+    {:else}
+      <div class="block h-full w-full bg-gprimary rounded-md"></div>
+    {/if}
+  </div>
+  <!-- Video Controls -->
+  {#if videoSrc}
     <div
       id="video-controls"
       class="h-1/6 flex gap-2 items-center justify-center"
     >
       <button id="playpause" type="button" on:click={() => handlePlayPause()}>
         {#if paused || ended}
-          <PlayIcon class="h-8 w-8 text-white duration-200 ease-in-out" />
+          <PlayIcon class="h-8 w-8 text-white" />
         {:else}
           <PauseIcon class="h-8 w-8 text-white" />
         {/if}
@@ -150,12 +147,16 @@
           <SpeakerIcon />
         {/if}
       </button>
-      <button id="volinc" type="button" on:click={() => handleVolume("+")}
-        >Vol+</button
-      >
-      <button id="voldec" type="button" on:click={() => handleVolume("-")}
-        >Vol-</button
-      >
+      <div class="flex flex-col items-center">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          bind:value={volume}
+          class="w-20 cursor-pointer [&::-webkit-slider-runnable-track]:bg-slate-300 [&::-webkit-slider-runnable-track]:rounded-xl"
+        />
+      </div>
       <button
         id="fs"
         type="button"
@@ -165,5 +166,5 @@
         <DesktopComputerIcon class="h-8 w-8 text-white" />
       </button>
     </div>
-  </figure>
-{/if}
+  {/if}
+</figure>
