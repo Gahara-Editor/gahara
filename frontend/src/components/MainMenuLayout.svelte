@@ -102,18 +102,27 @@
   {#if loadProjectView}
     <div class="flex flex-col gap-1">
       {#if projects}
-        <div>
-          <select
-            id="projectNames"
-            bind:value={$projectName}
-            class="appearance-none bg-stone-200"
-          >
-            {#each projects as project (project)}
-              <option value={project}>
-                {project}
-              </option>
-            {/each}
-          </select>
+        <div class="flex gap-2">
+          <div class="relative inline-flex">
+            <select
+              id="projectNames"
+              bind:value={$projectName}
+              class="block appearance-none w-full bg-white border border-indigo-500 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-indigo-600"
+            >
+              {#each projects as project (project)}
+                <option value={project}>
+                  {project.length > 25
+                    ? `${project.substring(0, 25)}...`
+                    : project}
+                </option>
+              {/each}
+            </select>
+            <div
+              class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500"
+            >
+              <ChevronDownIcon class="h-6 w-6" />
+            </div>
+          </div>
           <button
             disabled={$projectName == ""}
             class="rounded-full bg-indigo-500 font-semibold text-white px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200"
