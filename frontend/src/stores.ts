@@ -62,3 +62,4 @@ function createFilesytemStore() {
 export const video = createVideoStore();
 export const videoFiles = createFilesytemStore();
 export const projectName = writable("");
+export const currentVideo = writable("");
