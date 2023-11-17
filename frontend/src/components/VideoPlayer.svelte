@@ -7,15 +7,17 @@
   } from "@rgossiaux/svelte-heroicons/solid";
   import SpeakerIcon from "../icons/SpeakerIcon.svelte";
   import MutedIcon from "../icons/MutedIcon.svelte";
+  import { onMount } from "svelte";
+  import { currentVideo } from "../stores";
   export let videoSrc: string;
 
   let duration: number;
   let currentTime: number;
   let playbackRate: number;
-  let volume: number = 0.5;
-  let paused: boolean = true;
-  let ended: boolean = false;
-  let muted: boolean = false;
+  let volume: number;
+  let paused: boolean;
+  let ended: boolean;
+  let muted: boolean;
   let seeking: boolean;
   let buffered: TimeRanges;
   let played: TimeRanges;
@@ -28,7 +30,28 @@
   let progress: HTMLProgressElement;
   let fullscreen: HTMLButtonElement;
 
+  function setVideoPlayerDefaults() {
+    volume = 0.5;
+    paused = true;
+    ended = false;
+    muted = false;
+    if (progress) {
+      progress.value = 0;
+    }
+  }
+
+  onMount(() => {
+    currentVideo.set(videoSrc);
+    setVideoPlayerDefaults();
+  });
+
   $: muted = volume <= 0;
+  $: {
+    if (videoSrc !== $currentVideo) {
+      currentVideo.set(videoSrc);
+      setVideoPlayerDefaults();
+    }
+  }
 
   function setProgressMax() {
     progress.max = duration;
@@ -49,6 +72,16 @@
     const rect = progress.getBoundingClientRect();
     const pos = (e.pageX - rect.left) / progress.offsetWidth;
     currentTime = pos * duration;
+  }
+
+  function progressSkipAheadPress(
+    e: KeyboardEvent & {
+      currentTarget: EventTarget & HTMLProgressElement;
+    },
+  ) {
+    if (e.key === "ArrowRight" && currentTime + 5 <= duration) {
+      currentTime += 5;
+    }
   }
 
   function handlePlayPause() {
@@ -136,6 +169,7 @@
           value="0"
           bind:this={progress}
           on:click={(e) => progressSkipAhead(e)}
+          on:keydown={(e) => progressSkipAheadPress(e)}
         >
           <span id="progress-bar"></span>
         </progress>
