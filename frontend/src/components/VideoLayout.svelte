@@ -11,6 +11,7 @@
   import { onDestroy } from "svelte";
   import Modal from "./Modal.svelte";
   import VideoPlayer from "./VideoPlayer.svelte";
+  import Timeline from "./Timeline.svelte";
 
   let fileUploadError = "";
   let videoSrc = "";
@@ -41,11 +42,11 @@
   });
 </script>
 
-<div class="h-full text-white rounded-md bg-red-500">
+<div class="h-full text-white rounded-md bg-gprimary overflow-y-hidden">
   <div class="flex items-start gap-2 p-4">
     <!-- Video Uploading -->
     <div
-      class="flex flex-col text-white rounded-md bg-gblue0 border-white border-2 p-2 gap-2 w-1/4 h-fit"
+      class="flex flex-col text-white rounded-md bg-gblue0 border-white border-2 p-2 gap-2 w-1/4 h-[28rem]"
     >
       <div class="flex items-center gap-2">
         <Modal>
@@ -79,7 +80,7 @@
         </Modal>
         <h2 class="font-semibold text-md">{$projectName}</h2>
       </div>
-      <div>
+      <div class="flex items-center gap-2">
         <button
           class="bg-teal hover:bg-green2 px-2 py-1 rounded-full flex items-center gap-1 border-2 border-white transition ease-in-out duration-500"
           on:click={() => selectFile()}
@@ -87,13 +88,21 @@
           <PlusCircleIcon class="h-5 w-5 text-white" />
           <span class="text-white font-medium">Video</span>
         </button>
+        {#if fileUploadError}
+          <div>
+            {fileUploadError}
+          </div>
+        {/if}
       </div>
       {#if videoFiles}
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2 max-h-screen overflow-y-auto">
           {#each $videoFiles as video (video.name)}
             <div
               class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2"
-              on:click={() => viewVideo(video.filepath)}
+              on:click={() => {
+                fileUploadError = "";
+                viewVideo(video.filepath);
+              }}
             >
               <button
                 class="bg-red-500 hover:bg-red-400 px-1 py-1 rounded-full"
@@ -106,17 +115,12 @@
           {/each}
         </div>
       {/if}
-      {#if fileUploadError}
-        <div>
-          {fileUploadError}
-        </div>
-      {/if}
     </div>
     <!-- Video Player -->
-    <div id="video-player" class="h-[36rem] w-3/4">
+    <div id="video-player" class="h-[28rem] w-3/4">
       <VideoPlayer {videoSrc} />
     </div>
   </div>
   <!-- Timeline -->
-  <div>Timeline</div>
+  <Timeline />
 </div>

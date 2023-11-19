@@ -28,7 +28,6 @@
   let videoContainer: HTMLElement;
   let video: HTMLVideoElement;
   let progress: HTMLProgressElement;
-  let fullscreen: HTMLButtonElement;
 
   function setVideoPlayerDefaults() {
     volume = 0.5;
@@ -191,12 +190,7 @@
           class="w-20 cursor-pointer [&::-webkit-slider-runnable-track]:bg-slate-300 [&::-webkit-slider-runnable-track]:rounded-xl"
         />
       </div>
-      <button
-        id="fs"
-        type="button"
-        bind:this={fullscreen}
-        on:click={() => handleFullScreen()}
-      >
+      <button id="fs" type="button" on:click={() => handleFullScreen()}>
         <DesktopComputerIcon class="h-8 w-8 text-white" />
       </button>
     </div>
