@@ -15,7 +15,6 @@
 
   let fileUploadError = "";
   let videoSrc = "";
-  let thumbnail = "";
 
   function loadProjectFiles() {
     ReadProjectWorkspace()
@@ -122,5 +121,5 @@
     </div>
   </div>
   <!-- Timeline -->
-  <Timeline />
+  <Timeline {videoSrc} />
 </div>
