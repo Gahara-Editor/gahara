@@ -1,5 +1,5 @@
-import { writable } from "svelte/store";
-import { main } from "../wailsjs/go/models";
+import { get, writable } from "svelte/store";
+import type { main } from "../wailsjs/go/models";
 
 export function createBooleanStore(initial: boolean) {
   const isOpen = writable(initial);
@@ -35,6 +35,7 @@ function createFilesytemStore() {
   const { subscribe, set, update } = writable<main.Video[]>([]);
 
   const addVideos = (videos: main.Video[]) => {
+    // TODO: handle duplicated keys
     update((projectFiles) => (projectFiles = [...projectFiles, ...videos]));
   };
 
@@ -59,7 +60,27 @@ function createFilesytemStore() {
   };
 }
 
+function createVideoTransferStore() {
+  const video = writable<main.Video>(null);
+  const { set } = video;
+
+  function value(): main.Video {
+    return get(video);
+  }
+
+  function setDraggedVideo(vid: main.Video) {
+    set(vid);
+  }
+
+  return {
+    setDraggedVideo,
+    value,
+  };
+}
+
 export const video = createVideoStore();
 export const videoFiles = createFilesytemStore();
+export const trackFiles = createFilesytemStore();
 export const projectName = writable("");
 export const currentVideo = writable("");
+export const draggedVideo = createVideoTransferStore();
