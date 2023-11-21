@@ -12,6 +12,7 @@
   import Modal from "./Modal.svelte";
   import VideoPlayer from "./VideoPlayer.svelte";
   import Timeline from "./Timeline.svelte";
+  import { draggable } from "../lib/dnd";
 
   let fileUploadError = "";
   let videoSrc = "";
@@ -97,6 +98,7 @@
         <div class="flex flex-col gap-2 max-h-screen overflow-y-auto">
           {#each $videoFiles as video (video.name)}
             <div
+              use:draggable={video}
               class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2"
               on:click={() => {
                 fileUploadError = "";
@@ -121,5 +123,5 @@
     </div>
   </div>
   <!-- Timeline -->
-  <Timeline {videoSrc} />
+  <Timeline />
 </div>

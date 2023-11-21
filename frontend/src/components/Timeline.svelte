@@ -1,7 +1,9 @@
 <script lang="ts">
   import TimelineArrow from "../icons/TimelineArrow.svelte";
+  import { dropzone } from "../lib/dnd";
+  import type { main } from "../../wailsjs/go/models";
+  import { trackFiles } from "../stores";
 
-  export let videoSrc: string;
   let hoverPos = 0;
   let duration: number;
   let currentTime: number;
@@ -16,23 +18,34 @@
   let seekable: TimeRanges;
   let videoWidth: number;
   let videoHeight: number;
-  let tracks = [videoSrc];
-
-  function handleBarProgress(
-    e: MouseEvent & {
-      currentTarget: EventTarget & HTMLDivElement;
-    },
-  ) {}
 </script>
 
 <div
-  class="h-full w-full bg-gdark border-t-2 border-t-white flex flex-col gap-4 pt-4 pb-4 relative"
+  class="timeline h-full w-full bg-gdark border-t-2 border-t-white flex flex-col gap-4 pt-4 pb-4 relative"
   on:mousemove={(e) => (hoverPos = e.clientX)}
+  use:dropzone={{}}
 >
-  <div class="absolute top-0 left-0" style={`left: ${hoverPos}px`}>
+  <div
+    class="absolute top-0 left-0 cursor-pointer"
+    style={`left: ${hoverPos}px`}
+  >
     <TimelineArrow />
   </div>
   <!-- VIDEO TRACK -->
-  <div class="bg-red-500 h-28">vide</div>
-  <div class="bg-green-500 h-28">vide</div>
+  {#each $trackFiles as track (track.filepath)}
+    <div class="w-full h-28 bg-gred1">
+      {track.name}
+    </div>
+  {/each}
 </div>
+
+<style>
+  .timeline:global(.droppable) {
+    border-width: 2px;
+    border-color: rgb(122, 162, 247);
+  }
+
+  .timeline:global(.droppable) * {
+    pointer-events: none;
+  }
+</style>
