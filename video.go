@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/k1nho/gahara/internal/utils"
 	"github.com/k1nho/gahara/internal/video"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -36,6 +38,12 @@ func (a *App) createProxyFile(inputFile, fileName string) {
 		if err != nil {
 			wruntime.LogError(a.ctx, fmt.Sprintf("could not create the proxy file for %s: %s", inputFile, err.Error()))
 			return
+		}
+
+		// Once the proxy file is created, generate a thumbnail
+		err = a.GenerateThumbnail(proxyFile)
+		if err != nil {
+			wruntime.LogError(a.ctx, fmt.Sprintf("could not generate thumbnail for proxy file %s: %s", inputFile, err.Error()))
 		}
 		wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file created: %s", fileName))
 		return
@@ -87,15 +95,41 @@ func (a *App) GenerateVideoConcatFile(filenames []string) error {
 }
 
 // GenerateThumbnail: given an input file, generates a single frame that can be used as thumbnail
-func (a *App) GenerateThumbnail(inputFile string) ([]byte, error) {
-	cmd := video.GenerateEditThumb(inputFile)
-	err := cmd.Run()
+func (a *App) GenerateThumbnail(inputFile string) error {
+	filename, _, err := utils.GetNameAndExtension(inputFile)
+	if err != nil {
+		return fmt.Errorf("could not find proxy file %s: %s", inputFile, err.Error())
+	}
+
+	// check that the thumbnail exists
+	_, err = os.Stat(filename + ".png")
+	if err == nil {
+		return nil
+	}
+
+	cmd := video.GenerateEditThumb(inputFile, video.ThumbnailOpts{})
+	err = cmd.Run()
 	if err != nil {
 		errMsg := fmt.Sprintf("could not generate the thumbnail for file %s: %s", inputFile, err.Error())
 		wruntime.LogError(a.ctx, errMsg)
-		return nil, fmt.Errorf(errMsg)
+		return fmt.Errorf(errMsg)
 	}
 
-	// read image and send it
-	return []byte("image"), nil
+	return nil
+}
+
+func (a *App) GetThumbnail(inputFile string) error {
+	filename := filepath.Base(inputFile)
+	if filename == "." {
+		return fmt.Errorf("file %s does not exists", inputFile)
+	}
+
+	filename = filename + ".png"
+	_, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("could not find thumbnail %s", filename)
+	}
+
+	return nil
+
 }
