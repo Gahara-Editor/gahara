@@ -1,8 +1,8 @@
 <script lang="ts">
   import TimelineArrow from "../icons/TimelineArrow.svelte";
   import { dropzone } from "../lib/dnd";
-  import type { main } from "../../wailsjs/go/models";
   import { trackFiles } from "../stores";
+  import { onDestroy } from "svelte";
 
   let hoverPos = 0;
   let duration: number;
@@ -18,6 +18,11 @@
   let seekable: TimeRanges;
   let videoWidth: number;
   let videoHeight: number;
+
+  onDestroy(() => {
+    trackFiles.reset();
+    hoverPos = 0;
+  });
 </script>
 
 <div
@@ -31,7 +36,7 @@
   >
     <TimelineArrow />
   </div>
-  <!-- VIDEO TRACK -->
+  <!-- VIDEO TRACKS -->
   {#each $trackFiles as track (track.filepath)}
     <div class="w-full h-28 bg-gred1">
       {track.name}
