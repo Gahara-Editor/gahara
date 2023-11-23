@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/wailsapp/wails/v2"
@@ -103,7 +104,7 @@ func NewFileLoader() *FileLoader {
 
 func (h *FileLoader) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	http.ServeFile(w, r, r.URL.Path)
+	http.ServeFile(w, r, filepath.Clean(r.URL.Path))
 }
 
 func main() {
