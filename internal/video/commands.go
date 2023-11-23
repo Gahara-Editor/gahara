@@ -9,6 +9,11 @@ import (
 	"github.com/k1nho/gahara/internal/utils"
 )
 
+type ThumbnailOpts struct {
+	StartTime string
+	Scale     string
+}
+
 // CreateProxyFile: creates a copy file from the original to preserve original and work with the given video clip
 func CreateProxyFileCMD(path, pathProxyFile string) *exec.Cmd {
 	return exec.Command("ffmpeg",
@@ -46,12 +51,13 @@ func AddVideoClipInInterval(mainVideo, clipVideo string, start, end time.Duratio
 	)
 }
 
-func GenerateEditThumb(file string) *exec.Cmd {
+// GenerateEditThumbnail: generate a thumbnail from a video
+func GenerateEditThumb(file string, opts ThumbnailOpts) *exec.Cmd {
 	outputFile := fmt.Sprintf("%s.png", utils.GetFilename(file))
 	return exec.Command("ffmpeg",
 		"-i", file, // input file
-		"-frames:v 1", // pick 1 frame from the video
-		"-s 128x128",  // scale it to 128x128
-		outputFile,    // output file
+		"-vframes", "1", // pick 1 frame from the video
+		"-s", "256x256", // scale of the video frame
+		outputFile, // output file
 	)
 }
