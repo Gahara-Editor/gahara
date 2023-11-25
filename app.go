@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/k1nho/gahara/internal/utils"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -187,6 +188,9 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 	projectFiles := []Video{}
 	for _, project := range files {
 		if !project.IsDir() {
+			if filepath.Ext(project.Name()) == ".png" {
+				continue
+			}
 			projectFiles = append(projectFiles, Video{Name: project.Name(), FilePath: path.Join(a.config.ProjectDir, project.Name())})
 		}
 	}
