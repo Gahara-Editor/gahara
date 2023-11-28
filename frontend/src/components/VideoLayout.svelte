@@ -4,10 +4,12 @@
     XIcon,
     PlusCircleIcon,
     FilmIcon,
+    ScissorsIcon,
+    ArrowSmDownIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
-  import { videoFiles, projectName } from "../stores";
+  import { videoFiles } from "../stores";
   import { ReadProjectWorkspace } from "../../wailsjs/go/main/App";
-  import { video } from "../stores";
+  import { video, selectedTrack } from "../stores";
   import { onDestroy } from "svelte";
   import Modal from "./Modal.svelte";
   import VideoPlayer from "./VideoPlayer.svelte";
@@ -17,7 +19,6 @@
   import { WindowSetTitle } from "../../wailsjs/runtime/runtime";
 
   let fileUploadError = "";
-  let videoSrc = "";
 
   function loadProjectFiles() {
     ReadProjectWorkspace()
@@ -36,7 +37,7 @@
   }
 
   function viewVideo(video: main.Video) {
-    videoSrc = `${video.filepath}/${video.name}${video.extension}`;
+    selectedTrack.set(`${video.filepath}/${video.name}${video.extension}`);
   }
 
   onDestroy(() => {
@@ -83,16 +84,26 @@
             </button>
           </div>
         </Modal>
-        <h2 class="font-semibold text-md">{$projectName}</h2>
+        <button
+          class="bg-gdark hover:bg-gprimary rounded-lg px-4 py-2 border-2 border-white"
+        >
+          <ArrowSmDownIcon class="h-6 w-6 text-white" />
+        </button>
       </div>
       <div class="flex items-center gap-2">
         <button
-          class="bg-teal hover:bg-green2 px-2 py-1 rounded-full flex items-center gap-1 border-2 border-white transition ease-in-out duration-500"
+          class="bg-gdark hover:bg-green2 px-2 py-1 rounded-md flex items-center gap-1 border-2 border-white transition ease-in-out duration-500"
           on:click={() => selectFile()}
         >
           <PlusCircleIcon class="h-5 w-5 text-white" />
-          <span class="text-white font-medium">Video</span>
         </button>
+        <button
+          class="bg-gdark hover:bg-green2 px-2 py-1 rounded-md flex items-center gap-1 border-2 border-white transition ease-in-out duration-500"
+          on:click={(e) => console.log(e)}
+        >
+          <ScissorsIcon class="h-5 w-5 text-white" />
+        </button>
+
         {#if fileUploadError}
           <div>
             {fileUploadError}
@@ -124,7 +135,7 @@
     </div>
     <!-- Video Player -->
     <div id="video-player" class="h-[28rem] w-3/4">
-      <VideoPlayer {videoSrc} />
+      <VideoPlayer />
     </div>
   </div>
   <!-- Timeline -->

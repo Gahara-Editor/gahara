@@ -12,7 +12,7 @@ export function createBooleanStore(initial: boolean) {
   };
 }
 
-function createVideoStore() {
+function createTwoPageRouterStore() {
   const { subscribe, set, update } = writable(false);
 
   const setVideoLayoutView = () => {
@@ -78,9 +78,10 @@ function createVideoTransferStore() {
   };
 }
 
-export const video = createVideoStore();
+export const video = createTwoPageRouterStore();
 export const videoFiles = createFilesytemStore();
 export const trackFiles = createFilesytemStore();
 export const projectName = writable("");
 export const currentVideo = writable("");
+export const selectedTrack = writable("");
 export const draggedVideo = createVideoTransferStore();

@@ -42,7 +42,6 @@
         maxWidth = trackWidth;
       }
     });
-
     return maxWidth;
   }
 
@@ -58,12 +57,21 @@
     (hoverPos = Math.min(e.clientX, calculateMaxTrackWidth()))}
   use:dropzone={{}}
 >
-  <div
-    class="absolute top-0 left-0 cursor-pointer"
-    style={`left: ${hoverPos}px`}
-  >
-    <TimelineArrow />
-  </div>
+  {#if $trackFiles.length <= 0}
+    <div class="flex justify-center items-center">
+      <p class="text-white text-4xl font-semibold select-none">
+        Drag And Drop Video Clips
+      </p>
+    </div>
+  {:else}
+    <div
+      class="absolute top-0 left-0 cursor-pointer"
+      style={`left: ${hoverPos}px`}
+    >
+      <TimelineArrow />
+    </div>
+  {/if}
+
   <!-- VIDEO TRACKS -->
   {#each $trackFiles as track (track.filepath + track.name)}
     <div
@@ -72,7 +80,8 @@
       <img
         src={loadThumbnail(track) + `?${timestamp}`}
         alt={`video: ${track.name}`}
-        class="h-full w-full"
+        class="h-full w-full select-none"
+        draggable={false}
         on:error={() => createThumbnail(track)}
       />
     </div>

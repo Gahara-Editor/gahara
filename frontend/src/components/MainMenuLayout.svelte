@@ -67,7 +67,10 @@
     {#if !createProjectView}
       <button
         class="rounded-lg bg-indigo-500 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200"
-        on:click={() => CreateProjectView()}>Create Project</button
+        on:click={() => {
+          $projectName = "";
+          CreateProjectView();
+        }}>Create Project</button
       >
     {:else}
       <button

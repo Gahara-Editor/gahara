@@ -9,7 +9,7 @@
   import MutedIcon from "../icons/MutedIcon.svelte";
   import { onMount } from "svelte";
   import { currentVideo } from "../stores";
-  export let videoSrc: string;
+  import { selectedTrack } from "../stores";
 
   let duration: number;
   let currentTime: number;
@@ -27,6 +27,7 @@
 
   let videoContainer: HTMLElement;
   let video: HTMLVideoElement;
+  let videoSrc: string;
   let progress: HTMLProgressElement;
 
   function setVideoPlayerDefaults() {
@@ -40,14 +41,14 @@
   }
 
   onMount(() => {
-    currentVideo.set(videoSrc);
+    videoSrc = $selectedTrack;
     setVideoPlayerDefaults();
   });
 
   $: muted = volume <= 0;
   $: {
-    if (videoSrc !== $currentVideo) {
-      currentVideo.set(videoSrc);
+    if (videoSrc !== $selectedTrack) {
+      videoSrc = $selectedTrack;
       setVideoPlayerDefaults();
     }
   }
