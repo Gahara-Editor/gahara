@@ -52,12 +52,11 @@ func AddVideoClipInInterval(mainVideo, clipVideo string, start, end time.Duratio
 }
 
 // GenerateEditThumbnail: generate a thumbnail from a video
-func GenerateEditThumb(file string, opts ThumbnailOpts) *exec.Cmd {
-	outputFile := fmt.Sprintf("%s.png", utils.GetFilename(file))
+func GenerateEditThumb(inputFilePath string, outputFilePath string, opts ThumbnailOpts) *exec.Cmd {
 	return exec.Command("ffmpeg",
-		"-i", file, // input file
+		"-i", inputFilePath, // input file
 		"-vframes", "1", // pick 1 frame from the video
 		"-s", "256x256", // scale of the video frame
-		outputFile, // output file
+		outputFilePath, // output file
 	)
 }
