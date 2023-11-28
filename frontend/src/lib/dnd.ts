@@ -39,14 +39,12 @@ export function dropzone(node: HTMLDivElement, opts) {
       currentTarget: EventTarget & HTMLDivElement;
     },
   ) {
-    console.log("event drag enter fired");
     e.currentTarget.classList.add(state.dragOverClass);
   }
 
   function handleDragLeave(
     e: DragEvent & { currentTarget: EventTarget & HTMLDivElement },
   ) {
-    console.log("event drag leave fired");
     e.currentTarget.classList.remove(state.dragOverClass);
   }
 
@@ -55,7 +53,6 @@ export function dropzone(node: HTMLDivElement, opts) {
   ) {
     e.preventDefault();
 
-    console.log("event drag over fired");
     e.dataTransfer.dropEffect = state.dropEffect;
   }
 
