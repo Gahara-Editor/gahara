@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/k1nho/gahara/internal/utils"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -136,7 +137,6 @@ func (a *App) CreateProjectWorkspace(projectName string) (string, error) {
 // SetProjectDirectory: sets the project directory (used with loading projects)
 func (a *App) SetProjectDirectory(projectDir string) {
 	a.config.ProjectDir = path.Join(a.config.GaharaDir, projectDir)
-
 }
 
 // ReadGaharaWorkspace: retrieve all the project workspaces
@@ -191,7 +191,7 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 			if filepath.Ext(project.Name()) == ".png" {
 				continue
 			}
-			projectFiles = append(projectFiles, Video{Name: project.Name(), FilePath: path.Join(a.config.ProjectDir, project.Name())})
+			projectFiles = append(projectFiles, Video{Name: strings.Split(project.Name(), ".")[0], Extension: filepath.Ext(project.Name()), FilePath: a.config.ProjectDir})
 		}
 	}
 
