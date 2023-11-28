@@ -14,6 +14,7 @@
   import Timeline from "./Timeline.svelte";
   import { draggable } from "../lib/dnd";
   import type { main } from "../../wailsjs/go/models";
+  import { WindowSetTitle } from "../../wailsjs/runtime/runtime";
 
   let fileUploadError = "";
   let videoSrc = "";
@@ -72,7 +73,10 @@
             >
             <button
               class="bg-gdark rounded-lg px-2 py-0.5 border-2 border-white flex items-center gap-2 hover:bg-gblue0 transition ease-in-out duration-200"
-              on:click={() => video.setMainMenuView()}
+              on:click={() => {
+                WindowSetTitle("Gahara");
+                video.setMainMenuView();
+              }}
             >
               <FilmIcon class="h-6 w-6 text-white" />
               <span>Switch Project</span>

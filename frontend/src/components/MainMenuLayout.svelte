@@ -6,6 +6,7 @@
   } from "../../wailsjs/go/main/App";
   import { ChevronDownIcon } from "@rgossiaux/svelte-heroicons/solid";
   import { video, projectName } from "../stores";
+  import { WindowSetTitle } from "../../wailsjs/runtime/runtime";
 
   let createProjectView: boolean;
   let loadProjectView: boolean;
@@ -16,6 +17,7 @@
     CreateProjectWorkspace($projectName)
       .then(() => {
         mainMenuError = "";
+        WindowSetTitle($projectName);
         video.setVideoLayoutView();
       })
       .catch((msg) => (mainMenuError = msg));
@@ -29,7 +31,10 @@
   loadProjects();
 
   function handleProjectSelected() {
-    SetProjectDirectory($projectName).then(() => video.setVideoLayoutView());
+    SetProjectDirectory($projectName).then(() => {
+      WindowSetTitle($projectName);
+      video.setVideoLayoutView();
+    });
   }
 
   function MainMenuView() {
@@ -129,6 +134,7 @@
             on:click={() => handleProjectSelected()}>Load</button
           >
         </div>
+        <div class="text-white 2xl">project previes</div>
       {:else}
         <p class="text-white text-lg">No projects found</p>
       {/if}
