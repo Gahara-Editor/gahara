@@ -13,6 +13,7 @@
   import VideoPlayer from "./VideoPlayer.svelte";
   import Timeline from "./Timeline.svelte";
   import { draggable } from "../lib/dnd";
+  import type { main } from "../../wailsjs/go/models";
 
   let fileUploadError = "";
   let videoSrc = "";
@@ -33,8 +34,8 @@
       .catch(() => (fileUploadError = "No files selected"));
   }
 
-  function viewVideo(path: string) {
-    videoSrc = path;
+  function viewVideo(video: main.Video) {
+    videoSrc = `${video.filepath}/${video.name}${video.extension}`;
   }
 
   onDestroy(() => {
@@ -102,7 +103,7 @@
               class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2"
               on:click={() => {
                 fileUploadError = "";
-                viewVideo(video.filepath);
+                viewVideo(video);
               }}
             >
               <button

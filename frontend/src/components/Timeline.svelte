@@ -3,8 +3,11 @@
   import { dropzone } from "../lib/dnd";
   import { trackFiles } from "../stores";
   import { onDestroy } from "svelte";
+  import type { main } from "wailsjs/go/models";
+  import { GenerateThumbnail } from "../../wailsjs/go/main/App";
 
   let hoverPos = 0;
+  let timestamp = new Date().getTime();
   let duration: number;
   let currentTime: number;
   let playbackRate: number;
@@ -18,6 +21,16 @@
   let seekable: TimeRanges;
   let videoWidth: number;
   let videoHeight: number;
+
+  function loadThumbnail(track: main.Video) {
+    return `${track.filepath}/${track.name}.png`;
+  }
+
+  function createThumbnail(track: main.Video) {
+    GenerateThumbnail(`${track.filepath}/${track.name}${track.extension}`)
+      .then(() => (timestamp = new Date().getTime()))
+      .catch((e) => console.log(e));
+  }
 
   onDestroy(() => {
     trackFiles.reset();
@@ -37,9 +50,14 @@
     <TimelineArrow />
   </div>
   <!-- VIDEO TRACKS -->
-  {#each $trackFiles as track (track.filepath)}
-    <div class="w-full h-28 bg-gred1">
-      {track.name}
+  {#each $trackFiles as track (track.filepath + track.name)}
+    <div class="w-1/4 h-28 bg-teal rounded-md border-gblue border-2">
+      <img
+        src={loadThumbnail(track) + `?${timestamp}`}
+        alt={`video: ${track.name}`}
+        class="h-full w-full"
+        on:error={() => createThumbnail(track)}
+      />
     </div>
   {/each}
 </div>

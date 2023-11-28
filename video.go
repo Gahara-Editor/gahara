@@ -21,7 +21,11 @@ type Interval struct {
 }
 
 type Video struct {
-	Name     string `json:"name"`
+	// Name: the name of the video file (includes extension)
+	Name string `json:"name"`
+	// Extension: the container type of the video (mp4, avi, etc)
+	Extension string `json:"extension"`
+	// FilePath: the absolute path of the video
 	FilePath string `json:"filepath"`
 }
 
@@ -41,7 +45,7 @@ func (a *App) createProxyFile(inputFile, fileName string) {
 		}
 
 		// Once the proxy file is created, generate a thumbnail
-		err = a.GenerateThumbnail(proxyFile)
+		err = a.GenerateThumbnail(pathProxyFile)
 		if err != nil {
 			wruntime.LogError(a.ctx, fmt.Sprintf("could not generate thumbnail for proxy file %s: %s", inputFile, err.Error()))
 		}
@@ -95,40 +99,48 @@ func (a *App) GenerateVideoConcatFile(filenames []string) error {
 }
 
 // GenerateThumbnail: given an input file, generates a single frame that can be used as thumbnail
-func (a *App) GenerateThumbnail(inputFile string) error {
-	filename, _, err := utils.GetNameAndExtension(inputFile)
+func (a *App) GenerateThumbnail(inputFilePath string) error {
+	inputFile, err := os.Stat(inputFilePath)
 	if err != nil {
-		return fmt.Errorf("could not find proxy file %s: %s", inputFile, err.Error())
+		return fmt.Errorf("could not find proxy file: %s", err.Error())
 	}
 
+	filename, _, err := utils.GetNameAndExtension(inputFile.Name())
+	if err != nil {
+		return fmt.Errorf("could not extract name and extension")
+	}
 	// check that the thumbnail exists
-	_, err = os.Stat(filename + ".png")
+	thumbnailPath := fmt.Sprintf("%s/%s.png", a.config.ProjectDir, filename)
+	_, err = os.Stat(thumbnailPath)
 	if err == nil {
+		wruntime.LogInfo(a.ctx, fmt.Sprintf("thumbnail of video %s already exists", filename))
 		return nil
 	}
 
-	cmd := video.GenerateEditThumb(inputFile, video.ThumbnailOpts{})
+	cmd := video.GenerateEditThumb(inputFilePath, thumbnailPath, video.ThumbnailOpts{})
 	err = cmd.Run()
 	if err != nil {
-		errMsg := fmt.Sprintf("could not generate the thumbnail for file %s: %s", inputFile, err.Error())
+		errMsg := fmt.Sprintf("could not generate the thumbnail for file %s: %s", filename, err.Error())
 		wruntime.LogError(a.ctx, errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("thumbnail for video: %s has been created", filename))
 	return nil
 }
 
-func (a *App) GetThumbnail(inputFile string) error {
-	filename := filepath.Base(inputFile)
+func (a *App) GetThumbnail(inputFilePath string) error {
+	filename := filepath.Base(inputFilePath)
 	if filename == "." {
-		return fmt.Errorf("file %s does not exists", inputFile)
+		return fmt.Errorf("file %s does not exists", inputFilePath)
 	}
 
 	filename = filename + ".png"
-	_, err := os.Open(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("could not find thumbnail %s", filename)
 	}
+	defer file.Close()
 
 	return nil
 
