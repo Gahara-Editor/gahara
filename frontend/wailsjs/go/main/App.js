@@ -18,6 +18,10 @@ export function GenerateVideoConcatFile(arg1) {
   return window['go']['main']['App']['GenerateVideoConcatFile'](arg1);
 }
 
+export function GetThumbnail(arg1) {
+  return window['go']['main']['App']['GetThumbnail'](arg1);
+}
+
 export function ReadGaharaWorkspace() {
   return window['go']['main']['App']['ReadGaharaWorkspace']();
 }

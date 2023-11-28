@@ -6,9 +6,11 @@ export function CreateProjectWorkspace(arg1:string):Promise<string>;
 
 export function FilePicker():Promise<main.Video>;
 
-export function GenerateThumbnail(arg1:string):Promise<Array<number>>;
+export function GenerateThumbnail(arg1:string):Promise<void>;
 
 export function GenerateVideoConcatFile(arg1:Array<string>):Promise<void>;
+
+export function GetThumbnail(arg1:string):Promise<void>;
 
 export function ReadGaharaWorkspace():Promise<Array<string>>;
 
