@@ -8,7 +8,6 @@
   import SpeakerIcon from "../icons/SpeakerIcon.svelte";
   import MutedIcon from "../icons/MutedIcon.svelte";
   import { onMount } from "svelte";
-  import { currentVideo } from "../stores";
   import { selectedTrack } from "../stores";
 
   let duration: number;

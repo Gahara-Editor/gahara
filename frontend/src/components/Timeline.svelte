@@ -1,12 +1,13 @@
 <script lang="ts">
   import TimelineArrow from "../icons/TimelineArrow.svelte";
   import { dropzone } from "../lib/dnd";
-  import { trackFiles } from "../stores";
+  import { trackFiles, selectedTrack } from "../stores";
   import { onDestroy } from "svelte";
   import type { main } from "wailsjs/go/models";
   import { GenerateThumbnail } from "../../wailsjs/go/main/App";
 
   let hoverPos = 0;
+  let moveTimeline = false;
   let timestamp = new Date().getTime();
   let duration: number;
   let currentTime: number;
@@ -21,6 +22,10 @@
   let seekable: TimeRanges;
   let videoWidth: number;
   let videoHeight: number;
+
+  function viewVideo(video: main.Video) {
+    selectedTrack.set(`${video.filepath}/${video.name}${video.extension}`);
+  }
 
   function loadThumbnail(track: main.Video) {
     return `${track.filepath}/${track.name}.png`;
@@ -45,6 +50,24 @@
     return maxWidth;
   }
 
+  function moveTimelineBar() {
+    moveTimeline = true;
+  }
+
+  function stopTimelineBar() {
+    moveTimeline = false;
+  }
+
+  function handleTimelineMove(
+    e: MouseEvent & {
+      currentTarget: EventTarget & HTMLDivElement;
+    },
+  ) {
+    if (moveTimeline) {
+      hoverPos = Math.min(e.clientX, calculateMaxTrackWidth());
+    }
+  }
+
   onDestroy(() => {
     trackFiles.reset();
     hoverPos = 0;
@@ -53,9 +76,10 @@
 
 <div
   class="timeline h-full w-full bg-gdark border-t-2 border-t-white flex flex-col gap-4 pt-4 pb-4 relative"
-  on:mousemove={(e) =>
-    (hoverPos = Math.min(e.clientX, calculateMaxTrackWidth()))}
   use:dropzone={{}}
+  on:mousedown={() => moveTimelineBar()}
+  on:mouseup={() => stopTimelineBar()}
+  on:mousemove={(e) => handleTimelineMove(e)}
 >
   {#if $trackFiles.length <= 0}
     <div class="flex justify-center items-center">
@@ -64,10 +88,7 @@
       </p>
     </div>
   {:else}
-    <div
-      class="absolute top-0 left-0 cursor-pointer"
-      style={`left: ${hoverPos}px`}
-    >
+    <div class="absolute top-0 left-0 h-full w-3" style={`left: ${hoverPos}px`}>
       <TimelineArrow />
     </div>
   {/if}
@@ -75,7 +96,8 @@
   <!-- VIDEO TRACKS -->
   {#each $trackFiles as track (track.filepath + track.name)}
     <div
-      class="w-1/4 h-28 bg-teal rounded-md border-gblue border-2 video-track"
+      class="w-1/4 h-28 bg-teal rounded-md border-white border-2 video-track cursor-pointer"
+      on:click={() => viewVideo(track)}
     >
       <img
         src={loadThumbnail(track) + `?${timestamp}`}
