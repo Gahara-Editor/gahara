@@ -48,7 +48,7 @@
   <div
     id="modal"
     use:modalAction
-    class="fixed top-0 left-0 min-h-screen w-full flex justify-center items-center opacity-100"
+    class="fixed top-0 left-0 min-h-screen w-full z-10 flex justify-center items-center opacity-100"
   >
     <div
       id="backdrop"
@@ -57,7 +57,7 @@
     />
     <div
       id="content-wrap"
-      class="z-10 max-w-[70vw] rounded-[0.3rem] bg-gblue0 overflow-hidden md:max-w-[100vw]"
+      class="z-10 max-w-[70vw] rounded-[0.3rem] bg-gblue0 overflow-hidden md:max-w-[100vw] px-4 py-2 flex flex-col gap-4 border-white border-2"
     >
       <slot name="header">
         <!-- fallback -->
