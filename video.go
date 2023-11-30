@@ -132,7 +132,7 @@ func (a *App) GenerateThumbnail(inputFilePath string) error {
 func (a *App) GetThumbnail(inputFilePath string) error {
 	filename := filepath.Base(inputFilePath)
 	if filename == "." {
-		return fmt.Errorf("file %s does not exists", inputFilePath)
+		return fmt.Errorf("file %s does not exists", filename)
 	}
 
 	filename = filename + ".png"

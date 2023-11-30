@@ -75,7 +75,7 @@
 </script>
 
 <div
-  class="timeline h-full w-full bg-gdark border-t-2 border-t-white flex flex-col gap-4 pt-4 pb-4 relative"
+  class="timeline h-full w-full bg-gdark border-t-2 border-t-white flex flex-col gap-4 pt-4 pb-4 px-1 relative"
   use:dropzone={{}}
   on:mousedown={() => moveTimelineBar()}
   on:mouseup={() => stopTimelineBar()}

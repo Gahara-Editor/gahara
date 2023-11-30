@@ -42,6 +42,7 @@
 
   onDestroy(() => {
     videoFiles.reset();
+    selectedTrack.set("");
   });
 </script>
 
