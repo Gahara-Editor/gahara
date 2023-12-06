@@ -5,7 +5,7 @@
     SetProjectDirectory,
   } from "../../wailsjs/go/main/App";
   import { ChevronDownIcon } from "@rgossiaux/svelte-heroicons/solid";
-  import { video, projectName } from "../stores";
+  import { router, projectName } from "../stores";
   import { WindowSetTitle } from "../../wailsjs/runtime/runtime";
 
   let createProjectView: boolean;
@@ -18,7 +18,7 @@
       .then(() => {
         mainMenuError = "";
         WindowSetTitle($projectName);
-        video.setVideoLayoutView();
+        router.setVideoLayoutView();
       })
       .catch((msg) => (mainMenuError = msg));
   }
@@ -33,7 +33,7 @@
   function handleProjectSelected() {
     SetProjectDirectory($projectName).then(() => {
       WindowSetTitle($projectName);
-      video.setVideoLayoutView();
+      router.setVideoLayoutView();
     });
   }
 

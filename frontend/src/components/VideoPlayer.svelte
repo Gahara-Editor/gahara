@@ -8,14 +8,10 @@
   import SpeakerIcon from "../icons/SpeakerIcon.svelte";
   import MutedIcon from "../icons/MutedIcon.svelte";
   import { onMount } from "svelte";
-  import { selectedTrack } from "../stores";
+  import { videoStore, selectedTrack } from "../stores";
 
-  let duration: number;
-  let currentTime: number;
   let playbackRate: number;
   let volume: number;
-  let paused: boolean;
-  let ended: boolean;
   let muted: boolean;
   let seeking: boolean;
   let buffered: TimeRanges;
@@ -29,10 +25,12 @@
   let videoSrc: string;
   let progress: HTMLProgressElement;
 
+  let { duration, currentTime, paused, ended } = videoStore;
+
   function setVideoPlayerDefaults() {
     volume = 0.5;
-    paused = true;
-    ended = false;
+    paused.set(true);
+    ended.set(false);
     muted = false;
     if (progress) {
       progress.value = 0;
@@ -53,14 +51,14 @@
   }
 
   function setProgressMax() {
-    progress.max = duration;
+    progress.max = $duration;
   }
 
   function progressBarUpdate() {
     if (progress.max === 0) {
-      progress.max = duration;
+      progress.max = $duration;
     }
-    progress.value = currentTime;
+    progress.value = $currentTime;
   }
 
   function progressSkipAhead(
@@ -70,7 +68,7 @@
   ) {
     const rect = progress.getBoundingClientRect();
     const pos = (e.pageX - rect.left) / progress.offsetWidth;
-    currentTime = pos * duration;
+    currentTime.set(pos * $duration);
   }
 
   function progressSkipAheadPress(
@@ -78,13 +76,12 @@
       currentTarget: EventTarget & HTMLProgressElement;
     },
   ) {
-    if (e.key === "ArrowRight" && currentTime + 5 <= duration) {
-      currentTime += 5;
+    if (e.key === "ArrowRight" && $currentTime + 5 <= $duration) {
     }
   }
 
   function handlePlayPause() {
-    if (paused || ended) {
+    if ($paused || $ended) {
       video.play();
     } else {
       video.pause();
@@ -93,7 +90,7 @@
 
   function handleStop() {
     video.pause();
-    currentTime = 0;
+    $currentTime = 0;
     progress.value = 0;
   }
 
@@ -120,18 +117,19 @@
     {#if videoSrc}
       <video
         id="video"
-        class="block h-full w-full object-contain bg-gprimary rounded-md"
+        class="block h-full w-full object-contain bg-gprimary
+        rounded-md"
         src={videoSrc}
         bind:this={video}
-        bind:duration
+        bind:duration={$duration}
         bind:buffered
         bind:played
         bind:seekable
         bind:seeking
-        bind:ended
-        bind:currentTime
+        bind:ended={$ended}
+        bind:currentTime={$currentTime}
         bind:playbackRate
-        bind:paused
+        bind:paused={$paused}
         bind:volume
         bind:muted
         bind:videoWidth
@@ -152,7 +150,7 @@
       class="h-1/6 flex gap-2 items-center justify-center"
     >
       <button id="playpause" type="button" on:click={() => handlePlayPause()}>
-        {#if paused || ended}
+        {#if $paused || $ended}
           <PlayIcon class="h-8 w-8 text-white" />
         {:else}
           <PauseIcon class="h-8 w-8 text-white" />

@@ -1,11 +1,11 @@
 <script lang="ts">
   import VideoLayout from "./components/VideoLayout.svelte";
   import MainMenuLayout from "./components/MainMenuLayout.svelte";
-  import { video } from "./stores";
+  import { router } from "./stores";
 </script>
 
 <div class="h-screen">
-  {#if $video}
+  {#if $router}
     <VideoLayout />
   {:else}
     <MainMenuLayout />

@@ -78,10 +78,68 @@ function createVideoTransferStore() {
   };
 }
 
-export const video = createTwoPageRouterStore();
+function createVideoStore() {
+  const duration = writable<number>(0);
+  const currentTime = writable<number>(0.0);
+  const volume = writable<number>(0.5);
+  const paused = writable<boolean>(true);
+  const ended = writable<boolean>(false);
+
+  const { set: setDur } = duration;
+  const { set: setCurT } = currentTime;
+  const { set: setVol } = volume;
+
+  function setDuration(val: number) {
+    setDur(val);
+  }
+
+  function getDuration(): number {
+    return get(duration);
+  }
+
+  function setCurrentTime(val: number) {
+    setCurT(val);
+  }
+
+  function getCurrentTime(): number {
+    return get(currentTime);
+  }
+
+  function getVolume(): number {
+    return get(volume);
+  }
+
+  function setVolume(val: number) {
+    setVol(val);
+  }
+
+  function reset() {
+    setDur(0);
+    setCurT(0.0);
+    setVol(0.5);
+  }
+
+  return {
+    duration,
+    currentTime,
+    paused,
+    ended,
+    setDuration,
+    setCurrentTime,
+    getDuration,
+    getCurrentTime,
+    getVolume,
+    setVolume,
+    reset,
+  };
+}
+
+export const router = createTwoPageRouterStore();
 export const videoFiles = createFilesytemStore();
 export const trackFiles = createFilesytemStore();
 export const projectName = writable("");
 export const currentVideo = writable("");
 export const selectedTrack = writable("");
 export const draggedVideo = createVideoTransferStore();
+export const videoStore = createVideoStore();
+export const currenTime = writable(0.0);
