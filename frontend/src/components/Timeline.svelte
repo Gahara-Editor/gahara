@@ -5,23 +5,20 @@
   import { onDestroy } from "svelte";
   import type { main } from "wailsjs/go/models";
   import { GenerateThumbnail } from "../../wailsjs/go/main/App";
+  import { videoStore } from "../stores";
 
   let hoverPos = 0;
   let moveTimeline = false;
   let timestamp = new Date().getTime();
-  let duration: number;
-  let currentTime: number;
-  let playbackRate: number;
-  let volume: number;
-  let paused: boolean;
-  let ended: boolean;
-  let muted: boolean;
-  let seeking: boolean;
-  let buffered: TimeRanges;
-  let played: TimeRanges;
-  let seekable: TimeRanges;
-  let videoWidth: number;
-  let videoHeight: number;
+  let trackNode: HTMLDivElement;
+
+  const { getDuration, currentTime } = videoStore;
+
+  $: {
+    if (trackNode) {
+      hoverPos = ($currentTime / getDuration()) * trackNode.clientWidth;
+    }
+  }
 
   function viewVideo(video: main.Video) {
     selectedTrack.set(`${video.filepath}/${video.name}${video.extension}`);
@@ -65,6 +62,7 @@
   ) {
     if (moveTimeline) {
       hoverPos = Math.min(e.clientX, calculateMaxTrackWidth());
+      currentTime.set((hoverPos / trackNode.clientWidth) * getDuration());
     }
   }
 
@@ -98,6 +96,7 @@
     <div
       class="w-1/4 h-28 bg-teal rounded-md border-white border-2 video-track cursor-pointer"
       on:click={() => viewVideo(track)}
+      bind:this={trackNode}
     >
       <img
         src={loadThumbnail(track) + `?${timestamp}`}
