@@ -78,6 +78,38 @@ function createVideoTransferStore() {
   };
 }
 
+function createTracksStore() {
+  const { subscribe, set, update } = writable<main.Video[][]>([]);
+  let videoSet = [];
+
+  const addVideoToTrack = (id: number, video: main.Video) => {
+    // TODO: handle duplicated keys
+    update((tracks) => {
+      if (tracks.length === 0 || id > tracks.length) {
+        videoSet.push(new Set<string>([video.filepath + video.name]));
+        tracks.push([video]);
+      } else if (id >= 0 && id < tracks.length) {
+        if (!videoSet[id].has(video.filepath + video.name)) {
+          videoSet[id].add(video.filepath + video.name);
+          tracks[id] = [...tracks[id], video];
+        }
+      }
+      return tracks;
+    });
+  };
+
+  const reset = () => {
+    set([]);
+    videoSet = [];
+  };
+
+  return {
+    subscribe,
+    addVideoToTrack,
+    reset,
+  };
+}
+
 function createVideoStore() {
   const duration = writable<number>(0);
   const currentTime = writable<number>(0.0);
@@ -136,7 +168,7 @@ function createVideoStore() {
 
 export const router = createTwoPageRouterStore();
 export const videoFiles = createFilesytemStore();
-export const trackFiles = createFilesytemStore();
+export const trackStore = createTracksStore();
 export const projectName = writable("");
 export const currentVideo = writable("");
 export const selectedTrack = writable("");

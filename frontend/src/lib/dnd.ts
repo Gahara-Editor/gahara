@@ -1,4 +1,4 @@
-import { draggedVideo, trackFiles } from "../stores";
+import { draggedVideo, trackStore } from "../stores";
 import type { main } from "../../wailsjs/go/models";
 
 export function draggable(node: HTMLDivElement, data: main.Video) {
@@ -61,7 +61,8 @@ export function dropzone(node: HTMLDivElement, opts) {
   ) {
     e.preventDefault();
     e.currentTarget.classList.remove(state.dragOverClass);
-    trackFiles.addVideos([draggedVideo.value()]);
+    // TODO: add to different tracks dynamically for now 0
+    trackStore.addVideoToTrack(0, draggedVideo.value());
   }
 
   node.addEventListener("dragenter", handleDragEnter);
