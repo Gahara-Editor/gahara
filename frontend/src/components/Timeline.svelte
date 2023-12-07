@@ -1,18 +1,18 @@
 <script lang="ts">
   import TimelineArrow from "../icons/TimelineArrow.svelte";
   import { dropzone } from "../lib/dnd";
-  import { trackFiles, selectedTrack } from "../stores";
+  import { trackStore, selectedTrack } from "../stores";
   import { onDestroy } from "svelte";
   import type { main } from "wailsjs/go/models";
   import { GenerateThumbnail } from "../../wailsjs/go/main/App";
   import { videoStore } from "../stores";
 
+  const { getDuration, currentTime } = videoStore;
+
   let hoverPos = 0;
   let moveTimeline = false;
   let timestamp = new Date().getTime();
   let trackNode: HTMLDivElement;
-
-  const { getDuration, currentTime } = videoStore;
 
   $: {
     if (trackNode) {
@@ -67,7 +67,7 @@
   }
 
   onDestroy(() => {
-    trackFiles.reset();
+    trackStore.reset();
     hoverPos = 0;
   });
 </script>
@@ -79,7 +79,7 @@
   on:mouseup={() => stopTimelineBar()}
   on:mousemove={(e) => handleTimelineMove(e)}
 >
-  {#if $trackFiles.length <= 0}
+  {#if $trackStore.length <= 0}
     <div class="flex justify-center items-center">
       <p class="text-white text-4xl font-semibold select-none">
         Drag And Drop Video Clips
@@ -92,19 +92,24 @@
   {/if}
 
   <!-- VIDEO TRACKS -->
-  {#each $trackFiles as track (track.filepath + track.name)}
-    <div
-      class="w-1/4 h-28 bg-teal rounded-md border-white border-2 video-track cursor-pointer"
-      on:click={() => viewVideo(track)}
-      bind:this={trackNode}
-    >
-      <img
-        src={loadThumbnail(track) + `?${timestamp}`}
-        alt={`video: ${track.name}`}
-        class="h-full w-full select-none"
-        draggable={false}
-        on:error={() => createThumbnail(track)}
-      />
+  <!-- TODO Create an actual id for a track -->
+  {#each $trackStore as track, id (id)}
+    <div class="w-fit h-28 flex items-center">
+      {#each track as video (video.filepath + video.name)}
+        <div
+          class="h-28 bg-teal rounded-md border-white border-2 video-track cursor-pointer"
+          on:click={() => viewVideo(video)}
+          bind:this={trackNode}
+        >
+          <img
+            src={loadThumbnail(video) + `?${timestamp}`}
+            alt={`video: ${video.name}`}
+            class="h-full w-full select-none"
+            draggable={false}
+            on:error={() => createThumbnail(video)}
+          />
+        </div>
+      {/each}
     </div>
   {/each}
 </div>
