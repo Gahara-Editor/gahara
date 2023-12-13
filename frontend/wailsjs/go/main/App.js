@@ -22,6 +22,18 @@ export function GetThumbnail(arg1) {
   return window['go']['main']['App']['GetThumbnail'](arg1);
 }
 
+export function GetTimeline() {
+  return window['go']['main']['App']['GetTimeline']();
+}
+
+export function InsertInterval(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['InsertInterval'](arg1, arg2, arg3, arg4);
+}
+
+export function LoadTimeline() {
+  return window['go']['main']['App']['LoadTimeline']();
+}
+
 export function ReadGaharaWorkspace() {
   return window['go']['main']['App']['ReadGaharaWorkspace']();
 }
@@ -30,8 +42,24 @@ export function ReadProjectWorkspace() {
   return window['go']['main']['App']['ReadProjectWorkspace']();
 }
 
+export function RemoveInterval(arg1) {
+  return window['go']['main']['App']['RemoveInterval'](arg1);
+}
+
+export function ResetTimeline() {
+  return window['go']['main']['App']['ResetTimeline']();
+}
+
+export function SaveTimeline() {
+  return window['go']['main']['App']['SaveTimeline']();
+}
+
 export function SetProjectDirectory(arg1) {
   return window['go']['main']['App']['SetProjectDirectory'](arg1);
+}
+
+export function SplitInterval(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SplitInterval'](arg1, arg2, arg3, arg4);
 }
 
 export function TrimVideoInterval(arg1, arg2) {

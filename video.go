@@ -1,12 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -15,11 +15,6 @@ import (
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type Interval struct {
-	Start time.Duration `json:"start"`
-	End   time.Duration `json:"end"`
-}
-
 type Video struct {
 	// Name: the name of the video file (includes extension)
 	Name string `json:"name"`
@@ -27,6 +22,11 @@ type Video struct {
 	Extension string `json:"extension"`
 	// FilePath: the absolute path of the video
 	FilePath string `json:"filepath"`
+}
+
+type Interval struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
 }
 
 // createProxyFile: creates the proxy file to be used for editing (preserve original media)
@@ -61,13 +61,25 @@ func (a *App) createProxyFile(inputFile, fileName string) {
 
 // TrimVideoInterval: given an input file, and an interval (start,end), it returns the video with interval (start,end) removed
 func (a *App) TrimVideoInterval(inputFile string, interval Interval) error {
-	cmd := video.CutVideoInterval(inputFile, interval.Start, interval.End)
-	err := cmd.Run()
+	startCut := utils.FormatTime(interval.Start)
+	endCut := utils.FormatTime(interval.End)
+
+	name, _, err := utils.GetNameAndExtension(path.Base(inputFile))
 	if err != nil {
-		errMsg := fmt.Sprintf("could not trim the video interval from %d to %d: %s", interval.Start, interval.End, err.Error())
+		return err
+	}
+	id := strings.Replace(uuid.New().String(), "-", "", -1)
+	outputFile := path.Join(a.config.ProjectDir, fmt.Sprintf("%s_%s.mov", name, id))
+
+	cmd := video.CutVideoInterval(inputFile, outputFile, startCut, endCut)
+	err = cmd.Run()
+	if err != nil {
+		errMsg := fmt.Sprintf("could not trim the video interval from %s to %s: %v", startCut, endCut, err)
 		wruntime.LogError(a.ctx, errMsg)
 		return fmt.Errorf(errMsg)
 	}
+
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("video %s: [%s - %s] processed", name, startCut, endCut))
 	return nil
 }
 
@@ -129,6 +141,7 @@ func (a *App) GenerateThumbnail(inputFilePath string) error {
 	return nil
 }
 
+// GetThumbnail: retrieve thumbnail for a given input file
 func (a *App) GetThumbnail(inputFilePath string) error {
 	filename := filepath.Base(inputFilePath)
 	if filename == "." {
@@ -144,4 +157,70 @@ func (a *App) GetThumbnail(inputFilePath string) error {
 
 	return nil
 
+}
+
+// SaveTimeline: save project timeline into the project filesystem
+func (a *App) SaveTimeline() error {
+	if a.Timeline.VideoNodes == nil && len(a.Timeline.VideoNodes) <= 0 {
+		return fmt.Errorf("Timeline is empty, could not save timeline")
+	}
+	data, err := json.MarshalIndent(a.Timeline, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(path.Join(a.config.ProjectDir, "timeline.json"), data, 0644)
+	if err != nil {
+		return err
+	}
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("%+v", a.Timeline))
+	return nil
+}
+
+// LoadTimeline: retrieve saved project timeline, if any, from filesystem
+func (a *App) LoadTimeline() (video.Timeline, error) {
+	var timeline video.Timeline
+	timelinePath := path.Join(a.config.ProjectDir, "timeline.json")
+	if _, err := os.Stat(timelinePath); err != nil {
+		return timeline, fmt.Errorf("No timeline found for this project")
+	}
+	// the file exists, read it into the struct
+	bytes, err := os.ReadFile(timelinePath)
+	if err != nil {
+		wruntime.LogError(a.ctx, "could not read the timeline file")
+		return timeline, fmt.Errorf("could not read timeline file")
+	}
+
+	err = json.Unmarshal(bytes, &a.Timeline)
+	if err != nil {
+		wruntime.LogError(a.ctx, "could not unmarshal the timeline")
+		return timeline, err
+	}
+
+	wruntime.LogInfo(a.ctx, "timeline file has been found!")
+	return a.GetTimeline(), nil
+}
+
+// GetTimeline: returns the video timeline which is composed of video nodes
+func (a *App) GetTimeline() video.Timeline {
+	return a.Timeline
+}
+
+// InsertInterval: inserts a video node with some interval [a,b]
+func (a *App) InsertInterval(rid string, start, end float64, pos int) (video.VideoNode, error) {
+	return a.Timeline.Insert(rid, start, end, pos)
+}
+
+// RemoveInterval: removes a video node with some interval [a,b]
+func (a *App) RemoveInterval(pos int) error {
+	return a.Timeline.Delete(pos)
+}
+
+// SplitInterval: splits a video node with some interval [a,b].
+func (a *App) SplitInterval(eventType string, pos int, start, end float64) ([]video.VideoNode, error) {
+	return a.Timeline.Split(eventType, pos, start, end)
+}
+
+func (a *App) ResetTimeline() {
+	a.Timeline = video.NewTimeline()
 }

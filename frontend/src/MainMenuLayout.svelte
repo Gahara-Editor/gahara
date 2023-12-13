@@ -3,10 +3,10 @@
     CreateProjectWorkspace,
     ReadGaharaWorkspace,
     SetProjectDirectory,
-  } from "../../wailsjs/go/main/App";
+  } from "../wailsjs/go/main/App";
   import { ChevronDownIcon } from "@rgossiaux/svelte-heroicons/solid";
-  import { router, projectName } from "../stores";
-  import { WindowSetTitle } from "../../wailsjs/runtime/runtime";
+  import { router, projectName } from "./stores";
+  import { WindowSetTitle } from "../wailsjs/runtime/runtime";
 
   let createProjectView: boolean;
   let loadProjectView: boolean;
