@@ -1,5 +1,5 @@
 import { get, writable } from "svelte/store";
-import type { main } from "../wailsjs/go/models";
+import type { main, video } from "../wailsjs/go/models";
 
 export function createBooleanStore(initial: boolean) {
   const isOpen = writable(initial);
@@ -48,7 +48,7 @@ function createFilesytemStore() {
     );
   };
 
-  const reset = () => {
+  const resetVideoFiles = () => {
     set([]);
   };
 
@@ -56,7 +56,7 @@ function createFilesytemStore() {
     subscribe,
     addVideos,
     removeVideo,
-    reset,
+    resetVideoFiles,
   };
 }
 
@@ -72,97 +72,212 @@ function createVideoTransferStore() {
     set(vid);
   }
 
+  function resetVideoTransfer() {
+    set(null);
+  }
+
   return {
     setDraggedVideo,
+    resetVideoTransfer,
     value,
   };
 }
 
 function createTracksStore() {
-  const { subscribe, set, update } = writable<main.Video[][]>([]);
-  let videoSet = [];
+  const tracks = writable<video.VideoNode[][]>([]);
+  const trackTime = writable<number>(0.0);
+  const trackDuration = writable<number>(0.0);
 
-  const addVideoToTrack = (id: number, video: main.Video) => {
+  const { subscribe, set, update } = tracks;
+  const { set: setTrackDuration, update: updateTrackDuration } = trackDuration;
+  const { set: setTrackTime } = trackTime;
+
+  const addVideoToTrack = (id: number, video: video.VideoNode) => {
     // TODO: handle duplicated keys
     update((tracks) => {
       if (tracks.length === 0 || id > tracks.length) {
-        videoSet.push(new Set<string>([video.filepath + video.name]));
         tracks.push([video]);
       } else if (id >= 0 && id < tracks.length) {
-        if (!videoSet[id].has(video.filepath + video.name)) {
-          videoSet[id].add(video.filepath + video.name);
-          tracks[id] = [...tracks[id], video];
-        }
+        tracks[id] = [...tracks[id], video];
       }
+      return tracks;
+    });
+
+    updateTrackDuration((tDuration) => (tDuration += video.end - video.start));
+  };
+
+  const removeAndAddIntervalToTrack = (
+    id: number,
+    pos: number,
+    videoNodes: video.VideoNode[],
+  ) => {
+    update((tracks) => {
+      if (pos < 0 || pos > tracks[0].length) {
+        return tracks;
+      }
+      tracks[id].splice(pos, 1, ...videoNodes);
       return tracks;
     });
   };
 
-  const reset = () => {
+  const removeVideoFromTrack = (id: number, videoNode: video.VideoNode) => {
+    update((tracks) => {
+      tracks[id] = tracks[0].filter((v) => v.id !== videoNode.id);
+      return tracks;
+    });
+    updateTrackDuration(
+      (tDuration) => (tDuration -= videoNode.end - videoNode.start),
+    );
+  };
+
+  const resetTrackStore = () => {
     set([]);
-    videoSet = [];
+    setTrackTime(0);
+    setTrackDuration(0);
   };
 
   return {
     subscribe,
+    trackTime,
+    setTrackTime,
     addVideoToTrack,
-    reset,
+    removeVideoFromTrack,
+    removeAndAddIntervalToTrack,
+    trackDuration,
+    resetTrackStore,
   };
 }
 
 function createVideoStore() {
+  const source = writable<string>("");
   const duration = writable<number>(0);
   const currentTime = writable<number>(0.0);
   const volume = writable<number>(0.5);
   const paused = writable<boolean>(true);
   const ended = writable<boolean>(false);
 
-  const { set: setDur } = duration;
-  const { set: setCurT } = currentTime;
-  const { set: setVol } = volume;
+  const { set: setDuration } = duration;
+  const { set: setCurrentTime } = currentTime;
+  const { set: setVolume } = volume;
+  const { set: setVideoSrc } = source;
+  const { set: setPaused } = paused;
+  const { set: setEnded } = ended;
 
-  function setDuration(val: number) {
-    setDur(val);
+  function viewVideo(video: main.Video) {
+    setVideoSrc(`${video.filepath}/${video.name}${video.extension}`);
   }
 
   function getDuration(): number {
     return get(duration);
   }
 
-  function setCurrentTime(val: number) {
-    setCurT(val);
-  }
-
-  function getCurrentTime(): number {
-    return get(currentTime);
-  }
-
-  function getVolume(): number {
-    return get(volume);
-  }
-
-  function setVolume(val: number) {
-    setVol(val);
-  }
-
-  function reset() {
-    setDur(0);
-    setCurT(0.0);
-    setVol(0.5);
+  function resetVideo() {
+    setDuration(0);
+    setCurrentTime(0.0);
+    setVolume(0.5);
+    setVideoSrc("");
+    setPaused(true);
+    setEnded(false);
   }
 
   return {
+    source,
     duration,
+    getDuration,
     currentTime,
     paused,
     ended,
+    viewVideo,
+    setVideoSrc,
     setDuration,
     setCurrentTime,
-    getDuration,
-    getCurrentTime,
-    getVolume,
     setVolume,
-    reset,
+    resetVideo,
+  };
+}
+
+function createVideoToolingStore() {
+  // Edit modes
+  const editMode = writable<string>("select");
+
+  // Selected video information
+  const videoNode = writable<video.VideoNode>(null);
+  const videoNodePos = writable<number>(0);
+  const videoNodeWidth = writable<number>(1);
+  const videoNodeLeft = writable<number>(0);
+  const { set: setVideoNode } = videoNode;
+  const { set: setVideoNodePos } = videoNodePos;
+  const { set: setVideoNodeWidth } = videoNodeWidth;
+  const { set: setVideoNodeLeft } = videoNodeLeft;
+
+  // Cut and range box operations
+  const cutStart = writable<number>(0.0);
+  const cutEnd = writable<number>(0.0);
+  const clipStart = writable<number>(0.0);
+  const clipEnd = writable<number>(0.0);
+  const isMovingCutRangeBox = writable<boolean>(false);
+  const boxLeftBound = writable<number>(0);
+  const boxRightBound = writable<number>(0);
+  const { set: setCutStart } = cutStart;
+  const { set: setCutEnd } = cutEnd;
+  const { set: setEditMode } = editMode;
+  const { set: setClipStart } = clipStart;
+  const { set: setClipEnd } = clipEnd;
+  const { set: moveCutRangeBox } = isMovingCutRangeBox;
+  const { set: setBoxLeftBound } = boxLeftBound;
+  const { set: setBoxRightBound } = boxRightBound;
+
+  // Playhead
+  const playheadPos = writable<number>(0.0);
+  const isMovingPlayhead = writable<boolean>(false);
+  const { set: movePlayhead } = isMovingPlayhead;
+  const { set: setPlayheadPos, update: updatePlayheadPos } = playheadPos;
+
+  function resetToolingStore() {
+    setVideoNode(null);
+    setVideoNodePos(0);
+    setCutStart(0.0);
+    setCutEnd(0.0);
+    setClipStart(0.0);
+    setClipEnd(0.0);
+    moveCutRangeBox(false);
+    setBoxLeftBound(0);
+    setBoxRightBound(0);
+    setPlayheadPos(0);
+    movePlayhead(false);
+    setEditMode("select");
+  }
+
+  return {
+    editMode,
+    cutStart,
+    setCutStart,
+    cutEnd,
+    setCutEnd,
+    videoNode,
+    setVideoNode,
+    videoNodePos,
+    setVideoNodePos,
+    videoNodeWidth,
+    setVideoNodeWidth,
+    videoNodeLeft,
+    setVideoNodeLeft,
+    clipStart,
+    setClipStart,
+    clipEnd,
+    setClipEnd,
+    boxLeftBound,
+    boxRightBound,
+    setBoxLeftBound,
+    setBoxRightBound,
+    movePlayhead,
+    playheadPos,
+    setPlayheadPos,
+    updatePlayheadPos,
+    isMovingPlayhead,
+    isMovingCutRangeBox,
+    moveCutRangeBox,
+    resetToolingStore,
   };
 }
 
@@ -170,8 +285,6 @@ export const router = createTwoPageRouterStore();
 export const videoFiles = createFilesytemStore();
 export const trackStore = createTracksStore();
 export const projectName = writable("");
-export const currentVideo = writable("");
-export const selectedTrack = writable("");
 export const draggedVideo = createVideoTransferStore();
 export const videoStore = createVideoStore();
-export const currenTime = writable(0.0);
+export const toolingStore = createVideoToolingStore();

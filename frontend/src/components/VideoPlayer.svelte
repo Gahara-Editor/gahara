@@ -7,8 +7,12 @@
   } from "@rgossiaux/svelte-heroicons/solid";
   import SpeakerIcon from "../icons/SpeakerIcon.svelte";
   import MutedIcon from "../icons/MutedIcon.svelte";
-  import { onMount } from "svelte";
-  import { videoStore, selectedTrack } from "../stores";
+  import { onDestroy, onMount } from "svelte";
+  import { videoStore, toolingStore } from "../stores";
+  import ForwardIcon from "../icons/ForwardIcon.svelte";
+  import BackwardIcon from "../icons/BackwardIcon.svelte";
+
+  const { videoNode } = toolingStore;
 
   let playbackRate: number;
   let volume: number;
@@ -23,64 +27,43 @@
   let videoContainer: HTMLElement;
   let video: HTMLVideoElement;
   let videoSrc: string;
-  let progress: HTMLProgressElement;
 
-  let { duration, currentTime, paused, ended } = videoStore;
-
-  function setVideoPlayerDefaults() {
-    volume = 0.5;
-    paused.set(true);
-    ended.set(false);
-    muted = false;
-    if (progress) {
-      progress.value = 0;
-    }
-  }
+  let { source, duration, currentTime, paused, ended } = videoStore;
+  let { editMode, cutStart, cutEnd } = toolingStore;
 
   onMount(() => {
-    videoSrc = $selectedTrack;
+    videoSrc = $source;
     setVideoPlayerDefaults();
   });
 
   $: muted = volume <= 0;
   $: {
-    if (videoSrc !== $selectedTrack) {
-      videoSrc = $selectedTrack;
+    if (videoSrc !== $source) {
+      videoSrc = $source;
       setVideoPlayerDefaults();
     }
   }
-
-  function setProgressMax() {
-    progress.max = $duration;
-  }
-
-  function progressBarUpdate() {
-    if (progress.max === 0) {
-      progress.max = $duration;
+  $: {
+    if ($editMode === "cut") {
+      if ($currentTime >= $cutEnd) {
+        video.pause();
+      }
     }
-    progress.value = $currentTime;
   }
 
-  function progressSkipAhead(
-    e: MouseEvent & {
-      currentTarget: EventTarget & HTMLProgressElement;
-    },
-  ) {
-    const rect = progress.getBoundingClientRect();
-    const pos = (e.pageX - rect.left) / progress.offsetWidth;
-    currentTime.set(pos * $duration);
-  }
-
-  function progressSkipAheadPress(
-    e: KeyboardEvent & {
-      currentTarget: EventTarget & HTMLProgressElement;
-    },
-  ) {
-    if (e.key === "ArrowRight" && $currentTime + 5 <= $duration) {
-    }
+  function setVideoPlayerDefaults() {
+    playbackRate = 1;
+    volume = 0.5;
+    paused.set(true);
+    ended.set(false);
+    muted = false;
   }
 
   function handlePlayPause() {
+    if ($editMode === "cut") {
+      currentTime.set($cutStart);
+    }
+
     if ($paused || $ended) {
       video.play();
     } else {
@@ -90,12 +73,22 @@
 
   function handleStop() {
     video.pause();
-    $currentTime = 0;
-    progress.value = 0;
+    $currentTime = $videoNode ? $videoNode.start : 0;
   }
 
   function handleMute() {
     muted = !muted;
+  }
+
+  function handlePlaybackRate(dir: string) {
+    switch (dir) {
+      case "down":
+        playbackRate =
+          playbackRate / 2 > 0.125 ? playbackRate / 2 : playbackRate;
+        break;
+      default:
+        playbackRate = playbackRate * 2 < 8 ? playbackRate * 2 : playbackRate;
+    }
   }
 
   function handleFullScreen() {
@@ -107,6 +100,10 @@
       videoContainer.setAttribute("data-fullscreen", "true");
     }
   }
+
+  onDestroy(() => {
+    videoSrc = "";
+  });
 </script>
 
 <figure
@@ -134,8 +131,6 @@
         bind:muted
         bind:videoWidth
         bind:videoHeight
-        on:loadedmetadata={() => setProgressMax()}
-        on:timeupdate={() => progressBarUpdate()}
       >
         <track kind="captions" />
       </video>
@@ -159,18 +154,22 @@
       <button id="stop" type="button" on:click={() => handleStop()}>
         <StopIcon class="h-8 w-8 text-white" />
       </button>
-      <div class="cursor-pointer h-6 w-full">
-        <progress
-          class="h-full w-full [&::-webkit-progress-bar]:rounded-sm [&::-webkit-progress-value]:rounded-sm [&::-webkit-progress-bar]:bg-slate-300 [&::-webkit-progress-value]:bg-gred1 [&::-moz-progress-bar]:bg-gred1"
-          id="progress"
-          value="0"
-          bind:this={progress}
-          on:click={(e) => progressSkipAhead(e)}
-          on:keydown={(e) => progressSkipAheadPress(e)}
-        >
-          <span id="progress-bar"></span>
-        </progress>
-      </div>
+      <button
+        id="playbackrate"
+        type="button"
+        on:click={() => handlePlaybackRate("down")}
+      >
+        <BackwardIcon class="h-8 w-8 text-white" />
+      </button>
+
+      <button
+        id="playbackrate"
+        type="button"
+        on:click={() => handlePlaybackRate("up")}
+      >
+        <ForwardIcon class="h-8 w-8 text-white" />
+      </button>
+
       <button id="mute" type="button" on:click={() => handleMute()}>
         {#if muted}
           <MutedIcon />
@@ -191,6 +190,9 @@
       <button id="fs" type="button" on:click={() => handleFullScreen()}>
         <DesktopComputerIcon class="h-8 w-8 text-white" />
       </button>
+      <div class="px-2 rounded-md border-white border-2">
+        x{playbackRate}
+      </div>
     </div>
   {/if}
 </figure>

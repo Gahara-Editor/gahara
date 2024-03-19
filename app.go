@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/k1nho/gahara/internal/utils"
+	"github.com/k1nho/gahara/internal/video"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -27,14 +28,17 @@ type Config struct {
 
 // App struct
 type App struct {
+	// ctx: app context
 	ctx context.Context
 	// config: gahara configuration
 	config Config
+	// Timeline: the project timeline
+	Timeline video.Timeline `json:"timeline"`
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{Timeline: video.NewTimeline()}
 }
 
 // startup is called when the app starts. The context is saved
@@ -73,7 +77,7 @@ func (a *App) FilePicker() (Video, error) {
 		return Video{}, err
 	}
 
-	if !utils.IsValidExtension(ext) {
+	if !utils.IsValidExtension("." + ext) {
 		wruntime.LogError(a.ctx, "invalid file extension")
 		return Video{}, fmt.Errorf("invalid file extension")
 	}
@@ -188,7 +192,7 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 	projectFiles := []Video{}
 	for _, project := range files {
 		if !project.IsDir() {
-			if filepath.Ext(project.Name()) == ".png" {
+			if !utils.IsValidExtension(filepath.Ext(project.Name())) {
 				continue
 			}
 			projectFiles = append(projectFiles, Video{Name: strings.Split(project.Name(), ".")[0], Extension: filepath.Ext(project.Name()), FilePath: a.config.ProjectDir})
