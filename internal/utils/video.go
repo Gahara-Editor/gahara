@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k1nho/gahara/internal/constants"
+	"github.com/k1nho/gahara/internal/video"
 )
 
 func GetFilename(path string) string {
@@ -22,7 +22,7 @@ func GetNameAndExtension(fileName string) (name string, ext string, err error) {
 }
 
 func IsValidExtension(extension string) bool {
-	for _, ext := range constants.ValidVideoExtensions {
+	for _, ext := range video.ValidVideoExtensions {
 		if extension == ext {
 			return true
 		}

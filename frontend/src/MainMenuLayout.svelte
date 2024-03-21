@@ -8,6 +8,8 @@
   import { router, projectName } from "./stores";
   import { WindowSetTitle } from "../wailsjs/runtime/runtime";
 
+  const { setRoute } = router;
+
   let createProjectView: boolean;
   let loadProjectView: boolean;
   let mainMenuError: string = "";
@@ -18,7 +20,7 @@
       .then(() => {
         mainMenuError = "";
         WindowSetTitle($projectName);
-        router.setVideoLayoutView();
+        setRoute("video");
       })
       .catch((msg) => (mainMenuError = msg));
   }
@@ -33,7 +35,7 @@
   function handleProjectSelected() {
     SetProjectDirectory($projectName).then(() => {
       WindowSetTitle($projectName);
-      router.setVideoLayoutView();
+      setRoute("video");
     });
   }
 

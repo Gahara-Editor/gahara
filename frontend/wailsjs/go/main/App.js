@@ -6,16 +6,16 @@ export function CreateProjectWorkspace(arg1) {
   return window['go']['main']['App']['CreateProjectWorkspace'](arg1);
 }
 
+export function FFmpegQueryBuild() {
+  return window['go']['main']['App']['FFmpegQueryBuild']();
+}
+
 export function FilePicker() {
   return window['go']['main']['App']['FilePicker']();
 }
 
 export function GenerateThumbnail(arg1) {
   return window['go']['main']['App']['GenerateThumbnail'](arg1);
-}
-
-export function GenerateVideoConcatFile(arg1) {
-  return window['go']['main']['App']['GenerateVideoConcatFile'](arg1);
 }
 
 export function GetThumbnail(arg1) {
@@ -60,8 +60,4 @@ export function SetProjectDirectory(arg1) {
 
 export function SplitInterval(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SplitInterval'](arg1, arg2, arg3, arg4);
-}
-
-export function TrimVideoInterval(arg1, arg2) {
-  return window['go']['main']['App']['TrimVideoInterval'](arg1, arg2);
 }
