@@ -21,6 +21,30 @@ export namespace main {
 
 export namespace video {
 	
+	export class ProcessingOpts {
+	    resolution: string;
+	    codec: string;
+	    crf: string;
+	    preset: string;
+	    output_path: string;
+	    filename: string;
+	    video_format: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProcessingOpts(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.resolution = source["resolution"];
+	        this.codec = source["codec"];
+	        this.crf = source["crf"];
+	        this.preset = source["preset"];
+	        this.output_path = source["output_path"];
+	        this.filename = source["filename"];
+	        this.video_format = source["video_format"];
+	    }
+	}
 	export class VideoNode {
 	    rid: string;
 	    id: string;

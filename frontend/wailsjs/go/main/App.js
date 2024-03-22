@@ -6,8 +6,8 @@ export function CreateProjectWorkspace(arg1) {
   return window['go']['main']['App']['CreateProjectWorkspace'](arg1);
 }
 
-export function FFmpegQueryBuild() {
-  return window['go']['main']['App']['FFmpegQueryBuild']();
+export function ExportVideo(arg1) {
+  return window['go']['main']['App']['ExportVideo'](arg1);
 }
 
 export function FilePicker() {
@@ -18,12 +18,20 @@ export function GenerateThumbnail(arg1) {
   return window['go']['main']['App']['GenerateThumbnail'](arg1);
 }
 
+export function GetOutputFileSavePath() {
+  return window['go']['main']['App']['GetOutputFileSavePath']();
+}
+
 export function GetThumbnail(arg1) {
   return window['go']['main']['App']['GetThumbnail'](arg1);
 }
 
 export function GetTimeline() {
   return window['go']['main']['App']['GetTimeline']();
+}
+
+export function GetTrackDuration() {
+  return window['go']['main']['App']['GetTrackDuration']();
 }
 
 export function InsertInterval(arg1, arg2, arg3, arg4) {

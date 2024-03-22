@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/k1nho/gahara/internal/utils"
 	"github.com/k1nho/gahara/internal/video"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -70,14 +69,14 @@ func (a *App) FilePicker() (Video, error) {
 		return Video{}, err
 	}
 
-	fileName := utils.GetFilename(filepath)
-	name, ext, err := utils.GetNameAndExtension(fileName)
+	fileName := video.GetFilename(filepath)
+	name, ext, err := video.GetNameAndExtension(fileName)
 	if err != nil {
 		wruntime.LogError(a.ctx, err.Error())
 		return Video{}, err
 	}
 
-	if !utils.IsValidExtension("." + ext) {
+	if !video.IsValidExtension("." + ext) {
 		wruntime.LogError(a.ctx, "invalid file extension")
 		return Video{}, fmt.Errorf("invalid file extension")
 	}
@@ -192,7 +191,7 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 	projectFiles := []Video{}
 	for _, project := range files {
 		if !project.IsDir() {
-			if !utils.IsValidExtension(filepath.Ext(project.Name())) {
+			if !video.IsValidExtension(filepath.Ext(project.Name())) {
 				continue
 			}
 			projectFiles = append(projectFiles, Video{Name: strings.Split(project.Name(), ".")[0], Extension: filepath.Ext(project.Name()), FilePath: a.config.ProjectDir})
@@ -204,7 +203,7 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 		return nil, fmt.Errorf("Project workspace exists, but no files were found")
 	}
 
-	wruntime.LogInfo(a.ctx, "project directories loaded successfully")
+	wruntime.LogInfo(a.ctx, "project files loaded successfully")
 	return projectFiles, nil
 }
 
