@@ -12,22 +12,18 @@ export function createBooleanStore(initial: boolean) {
   };
 }
 
-function createTwoPageRouterStore() {
-  const { subscribe, set, update } = writable(false);
+function createRouterStore() {
+  const route = writable<string>("main");
+  const { set: setRoute } = route;
 
-  const setVideoLayoutView = () => {
-    set(true);
-  };
-
-  const setMainMenuView = () => {
-    set(false);
+  const resetRouter = () => {
+    setRoute("main");
   };
 
   return {
-    subscribe,
-    update,
-    setVideoLayoutView,
-    setMainMenuView,
+    setRoute,
+    route,
+    resetRouter,
   };
 }
 
@@ -281,7 +277,7 @@ function createVideoToolingStore() {
   };
 }
 
-export const router = createTwoPageRouterStore();
+export const router = createRouterStore();
 export const videoFiles = createFilesytemStore();
 export const trackStore = createTracksStore();
 export const projectName = writable("");

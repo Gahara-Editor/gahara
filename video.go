@@ -7,8 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/google/uuid"
+	"time"
 
 	"github.com/k1nho/gahara/internal/utils"
 	"github.com/k1nho/gahara/internal/video"
@@ -57,57 +56,6 @@ func (a *App) createProxyFile(inputFile, fileName string) {
 
 	wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file found: %s", fileName))
 
-}
-
-// TrimVideoInterval: given an input file, and an interval (start,end), it returns the video with interval (start,end) removed
-func (a *App) TrimVideoInterval(inputFile string, interval Interval) error {
-	startCut := utils.FormatTime(interval.Start)
-	endCut := utils.FormatTime(interval.End)
-
-	name, _, err := utils.GetNameAndExtension(path.Base(inputFile))
-	if err != nil {
-		return err
-	}
-	id := strings.Replace(uuid.New().String(), "-", "", -1)
-	outputFile := path.Join(a.config.ProjectDir, fmt.Sprintf("%s_%s.mov", name, id))
-
-	cmd := video.CutVideoInterval(inputFile, outputFile, startCut, endCut)
-	err = cmd.Run()
-	if err != nil {
-		errMsg := fmt.Sprintf("could not trim the video interval from %s to %s: %v", startCut, endCut, err)
-		wruntime.LogError(a.ctx, errMsg)
-		return fmt.Errorf(errMsg)
-	}
-
-	wruntime.LogInfo(a.ctx, fmt.Sprintf("video %s: [%s - %s] processed", name, startCut, endCut))
-	return nil
-}
-
-// GenerateVideoConcatFile: generates a .txt file with all the names of the video files to concatenate
-func (a *App) GenerateVideoConcatFile(filenames []string) error {
-
-	id, err := uuid.NewRandom()
-	if err != nil {
-		wruntime.LogError(a.ctx, "could not generate uuid for concat file")
-		return err
-	}
-
-	concatFilePath := path.Join(a.config.ProjectDir, id.String()+".txt")
-	concatFile, err := os.Create(concatFilePath)
-	if err != nil {
-		wruntime.LogError(a.ctx, "could not generate file.txt concatenation")
-		return err
-	}
-	defer concatFile.Close()
-
-	content := strings.Join(filenames, "\n")
-	err = os.WriteFile(concatFilePath, []byte(content), 0644)
-	if err != nil {
-		wruntime.LogError(a.ctx, "could not write the file.txt concatenation")
-		return err
-	}
-
-	return nil
 }
 
 // GenerateThumbnail: given an input file, generates a single frame that can be used as thumbnail
@@ -173,7 +121,7 @@ func (a *App) SaveTimeline() error {
 	if err != nil {
 		return err
 	}
-	wruntime.LogInfo(a.ctx, fmt.Sprintf("%+v", a.Timeline))
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("%s: Timeline has been saved", time.Now().String()))
 	return nil
 }
 
@@ -221,6 +169,33 @@ func (a *App) SplitInterval(eventType string, pos int, start, end float64) ([]vi
 	return a.Timeline.Split(eventType, pos, start, end)
 }
 
+// ResetTimeline: cleanup timeline state in memory
 func (a *App) ResetTimeline() {
 	a.Timeline = video.NewTimeline()
+}
+
+// FFmpegQueryBuild: builds the FFmpeg query based on timeline state and processing options (codec, resolution)
+func (a *App) FFmpegQueryBuild() (string, error) {
+	inputArgs, err := a.Timeline.InputArgs()
+	if err != nil {
+		return "", err
+	}
+
+	processingOpts := video.NewDefaultProcessingOpts()
+	query, err := a.Timeline.MergeClipsQuery(processingOpts)
+	if err != nil {
+		return "", err
+	}
+
+	outputArgs, err := a.Timeline.OutputArgs(processingOpts)
+	if err != nil {
+		return "", err
+	}
+
+	var ffmpegQuery strings.Builder
+	ffmpegQuery.WriteString("ffmpeg")
+	ffmpegQuery.WriteString(inputArgs)
+	ffmpegQuery.WriteString(query)
+	ffmpegQuery.WriteString(outputArgs)
+	return ffmpegQuery.String(), nil
 }

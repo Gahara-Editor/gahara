@@ -5,11 +5,11 @@ import {video} from '../models';
 
 export function CreateProjectWorkspace(arg1:string):Promise<string>;
 
+export function FFmpegQueryBuild():Promise<string>;
+
 export function FilePicker():Promise<main.Video>;
 
 export function GenerateThumbnail(arg1:string):Promise<void>;
-
-export function GenerateVideoConcatFile(arg1:Array<string>):Promise<void>;
 
 export function GetThumbnail(arg1:string):Promise<void>;
 
@@ -32,5 +32,3 @@ export function SaveTimeline():Promise<void>;
 export function SetProjectDirectory(arg1:string):Promise<void>;
 
 export function SplitInterval(arg1:string,arg2:number,arg3:number,arg4:number):Promise<Array<video.VideoNode>>;
-
-export function TrimVideoInterval(arg1:string,arg2:main.Interval):Promise<void>;

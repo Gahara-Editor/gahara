@@ -12,7 +12,7 @@
     ArrowSmDownIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
   import { router, videoStore, videoFiles, trackStore } from "./stores";
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import Modal from "./components/Modal.svelte";
   import VideoPlayer from "./components/VideoPlayer.svelte";
   import Timeline from "./components/Timeline.svelte";
@@ -25,12 +25,15 @@
   const { setVideoSrc, resetVideo } = videoStore;
   const { addVideoToTrack, trackTime, trackDuration } = trackStore;
   const { resetVideoFiles } = videoFiles;
+  const { setRoute } = router;
   let fileUploadError = "";
 
   function loadProjectFiles() {
-    ReadProjectWorkspace()
-      .then((files) => videoFiles.addVideos(files))
-      .catch(() => (fileUploadError = "No files in this project"));
+    if ($videoFiles.length === 0) {
+      ReadProjectWorkspace()
+        .then((files) => videoFiles.addVideos(files))
+        .catch(() => (fileUploadError = "No files in this project"));
+    }
   }
 
   function loadTimeline() {
@@ -76,12 +79,6 @@
       })
       .catch(() => (fileUploadError = "No files selected"));
   }
-
-  onDestroy(() => {
-    resetVideoFiles();
-    resetVideo();
-    ResetTimeline();
-  });
 </script>
 
 <div class="h-full text-white rounded-md bg-gprimary flex flex-col">
@@ -114,8 +111,11 @@
             <button
               class="bg-gdark rounded-lg px-2 py-1 border-2 border-white flex items-center gap-2 hover:bg-gblue0 transition ease-in-out duration-200"
               on:click={() => {
+                resetVideoFiles();
+                resetVideo();
+                ResetTimeline();
                 WindowSetTitle("Gahara");
-                router.setMainMenuView();
+                setRoute("main");
               }}
             >
               <FilmIcon class="h-5 w-5 text-white" />
@@ -138,6 +138,7 @@
 
         <button
           class="bg-gdark px-2 py-1 rounded-md flex items-center gap-1 border-2 border-white"
+          on:click={() => setRoute("export")}
         >
           <ArrowSmDownIcon class="h-5 w-5 text-white" />
         </button>
