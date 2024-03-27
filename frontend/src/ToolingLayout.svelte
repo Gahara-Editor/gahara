@@ -26,7 +26,7 @@
 
   function handleTwoCut() {
     if ($editMode === "timeline" && $videoNode) {
-      SplitInterval("sliceCut", $videoNodePos, $videoNode.start, $cutEnd)
+      SplitInterval("evt_slice_cut", $videoNodePos, $videoNode.start, $cutEnd)
         .then((nodes) => {
           if (nodes.length > 0) {
             removeAndAddIntervalToTrack(0, $videoNodePos, nodes);

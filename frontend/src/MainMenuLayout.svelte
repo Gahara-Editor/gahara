@@ -68,7 +68,7 @@
   <div class="flex gap-4">
     {#if !createProjectView}
       <button
-        class="rounded-lg bg-indigo-500 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200"
+        class="rounded-lg bg-indigo-500 border-white border-2 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200"
         on:click={() => {
           $projectName = "";
           CreateProjectView();
@@ -76,18 +76,18 @@
       >
     {:else}
       <button
-        class="rounded-lg bg-red-500 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-red-700 transition ease-in-out duration-200"
+        class="rounded-lg bg-red-500 border-white border-2 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-red-700 transition ease-in-out duration-200"
         on:click={() => MainMenuView()}>Back</button
       >
     {/if}
     {#if !loadProjectView}
       <button
-        class="rounded-lg bg-purple-500 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-purple-700 transition ease-in-out duration-200"
+        class="rounded-lg bg-purple-500 border-white border-2 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-purple-700 transition ease-in-out duration-200"
         on:click={() => LoadProjectView()}>Load Project</button
       >
     {:else}
       <button
-        class="rounded-lg bg-red-500 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-red-700 transition ease-in-out duration-200"
+        class="rounded-lg bg-red-500 border-white border-2 font-semibold text-white inline-flex items-center px-4 py-1.5 hover:bg-red-700 transition ease-in-out duration-200"
         on:click={() => MainMenuView()}>Back</button
       >
     {/if}
@@ -99,6 +99,8 @@
       >
       <input
         type="text"
+        autocorrect="off"
+        autocomplete="off"
         bind:value={$projectName}
         id="project-name"
         class="border-solid border-indigo-300 border-2 rounded-md focus:border-indigo-500 focus:outline-none"

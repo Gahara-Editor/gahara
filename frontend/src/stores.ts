@@ -277,6 +277,130 @@ function createVideoToolingStore() {
   };
 }
 
+function createExportOptionsStore() {
+  const videoFormats = [
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".m4v",
+    ".avi",
+    ".wmv",
+    ".flv",
+    ".h264",
+    ".hevc",
+    ".3gp",
+    ".3g2",
+    ".ogv",
+    ".264",
+    ".265",
+    ".webm",
+  ];
+
+  const videoCodecs = [
+    ["H.264", "libx264"],
+    ["H.264rgb", "libx264rgb"],
+    ["H.265 (HEVC)", "libx265"],
+    ["Lossless", "copy"],
+    ["VP9", "libvpx-vp9"],
+    ["Theora", "libtheora"],
+  ];
+
+  const crfOpts = ["18", "19", "20", "21", "22", "23"];
+  const resolutionOpts = [
+    "640x480",
+    "1280x720",
+    "1920x1080",
+    "2560x1440",
+    "3840x2160",
+  ];
+  const presetOpts = ["slow", "medium", "fast"];
+
+  const filename = writable<string>("myvideo");
+  const resolution = writable<string>("1920x1080");
+  const codec = writable<string>("libx264");
+  const videoFormat = writable<string>(".mp4");
+  const preset = writable<string>("medium");
+  const crf = writable<string>("18");
+  const outputPath = writable<string>("");
+  const isProcessingVid = writable<boolean>(false);
+  const processingMsg = writable<string>("");
+  const progressPercentage = writable<number>(0.0);
+
+  const { set: setFilename } = filename;
+  const { set: setResolution } = resolution;
+  const { set: setCodec } = codec;
+  const { set: setVideoFormat } = videoFormat;
+  const { set: setPreset } = preset;
+  const { set: setCrf } = crf;
+  const { set: setOutputPath } = outputPath;
+  const { set: setIsProcessingVid } = isProcessingVid;
+  const { set: setProcessingMsg } = processingMsg;
+  const { set: setProgressPercentage } = progressPercentage;
+
+  function getCompatibleCodecs(selectedFormat: string) {
+    switch (selectedFormat) {
+      case ".webm":
+        return videoCodecs.filter((c) => c[0] === "VP9");
+      case ".ogv":
+        return videoCodecs.filter((c) => c[0] === "Theora");
+      default:
+        return videoCodecs.filter((c) => c[0] !== "VP9" && c[0] !== "Theora");
+    }
+  }
+
+  function getExportOptions(): video.ProcessingOpts {
+    const exportOpts: video.ProcessingOpts = {
+      output_path: get(outputPath),
+      filename: get(filename),
+      video_format: get(videoFormat),
+      codec: get(codec),
+      resolution: get(resolution),
+      preset: get(preset),
+      crf: get(crf),
+    };
+    return exportOpts;
+  }
+
+  function resetExportOptionsStore() {
+    setFilename("myvideo");
+    setResolution("1920x1080");
+    setCodec("libx264");
+    setVideoFormat(".mp4");
+    setPreset("medium");
+    setCrf("18");
+    setOutputPath("");
+    setIsProcessingVid(false);
+    setProcessingMsg("");
+    setProgressPercentage(0.0);
+  }
+
+  return {
+    filename,
+    resolution,
+    resolutionOpts,
+    codec,
+    setCodec,
+    getCompatibleCodecs,
+    videoFormat,
+    videoFormats,
+    videoCodecs,
+    preset,
+    presetOpts,
+    crf,
+    crfOpts,
+    outputPath,
+    setOutputPath,
+    progressPercentage,
+    setProgressPercentage,
+    getExportOptions,
+    setIsProcessingVid,
+    isProcessingVid,
+    processingMsg,
+    setProcessingMsg,
+    resetExportOptionsStore,
+  };
+}
+
 export const router = createRouterStore();
 export const videoFiles = createFilesytemStore();
 export const trackStore = createTracksStore();
@@ -284,3 +408,4 @@ export const projectName = writable("");
 export const draggedVideo = createVideoTransferStore();
 export const videoStore = createVideoStore();
 export const toolingStore = createVideoToolingStore();
+export const exportOptionsStore = createExportOptionsStore();

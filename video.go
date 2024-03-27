@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/k1nho/gahara/internal/utils"
 	"github.com/k1nho/gahara/internal/video"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -65,7 +68,7 @@ func (a *App) GenerateThumbnail(inputFilePath string) error {
 		return fmt.Errorf("could not find proxy file: %s", err.Error())
 	}
 
-	filename, _, err := utils.GetNameAndExtension(inputFile.Name())
+	filename, _, err := video.GetNameAndExtension(inputFile.Name())
 	if err != nil {
 		return fmt.Errorf("could not extract name and extension")
 	}
@@ -132,7 +135,7 @@ func (a *App) LoadTimeline() (video.Timeline, error) {
 	if _, err := os.Stat(timelinePath); err != nil {
 		return timeline, fmt.Errorf("No timeline found for this project")
 	}
-	// the file exists, read it into the struct
+
 	bytes, err := os.ReadFile(timelinePath)
 	if err != nil {
 		wruntime.LogError(a.ctx, "could not read the timeline file")
@@ -174,14 +177,30 @@ func (a *App) ResetTimeline() {
 	a.Timeline = video.NewTimeline()
 }
 
+func (a *App) GetTrackDuration() (float64, error) {
+	if a.Timeline.VideoNodes == nil || len(a.Timeline.VideoNodes) == 0 {
+		return 0, fmt.Errorf("no timeline exists")
+	}
+
+	duration := 0.0
+	for _, videoNode := range a.Timeline.VideoNodes {
+		duration += videoNode.End - videoNode.Start
+	}
+	return duration, nil
+}
+
 // FFmpegQueryBuild: builds the FFmpeg query based on timeline state and processing options (codec, resolution)
-func (a *App) FFmpegQueryBuild() (string, error) {
+func (a *App) ffmpegQueryBuild(processingOpts *video.ProcessingOpts) (string, error) {
+	err := video.ValidateProcessingOpts(processingOpts)
+	if err != nil {
+		return "", err
+	}
+
 	inputArgs, err := a.Timeline.InputArgs()
 	if err != nil {
 		return "", err
 	}
 
-	processingOpts := video.NewDefaultProcessingOpts()
 	query, err := a.Timeline.MergeClipsQuery(processingOpts)
 	if err != nil {
 		return "", err
@@ -193,9 +212,77 @@ func (a *App) FFmpegQueryBuild() (string, error) {
 	}
 
 	var ffmpegQuery strings.Builder
-	ffmpegQuery.WriteString("ffmpeg")
+	ffmpegQuery.WriteString("ffmpeg -v quiet -stats_period 5s -progress pipe:2")
 	ffmpegQuery.WriteString(inputArgs)
 	ffmpegQuery.WriteString(query)
 	ffmpegQuery.WriteString(outputArgs)
 	return ffmpegQuery.String(), nil
+}
+
+func (a *App) GetOutputFileSavePath() (string, error) {
+	hd, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("could not get the user home directory")
+	}
+
+	saveFilepath, err := wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
+		DefaultDirectory:           path.Join(hd),
+		Title:                      "Export video",
+		ShowHiddenFiles:            false,
+		CanCreateDirectories:       true,
+		TreatPackagesAsDirectories: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf(err.Error())
+	}
+	return saveFilepath, nil
+}
+
+func (a *App) ExportVideo(userOpts video.ProcessingOpts) (string, error) {
+	query, err := a.ffmpegQueryBuild(&userOpts)
+	if err != nil {
+		return "", err
+	}
+	// TODO: handle win implementation
+	cmd := exec.Command("bash", "-c", query)
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return "", fmt.Errorf("could not initialize ffmpeg monitoring")
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return "", fmt.Errorf("could not initialize video export")
+	}
+	go a.monitorFFmpegOuput(stderrPipe)
+
+	err = cmd.Wait()
+	if err != nil {
+		return "", fmt.Errorf("could not export the video: %s%s", userOpts.Filename, userOpts.VideoFormat)
+	}
+	return fmt.Sprintf("%s%s has been processed!", userOpts.Filename, userOpts.VideoFormat), err
+}
+
+func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser) {
+	total, err := a.GetTrackDuration()
+	if err != nil {
+		return
+	}
+	scanner := bufio.NewScanner(FFmpegOut)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "out_time_us") {
+			args := strings.Split(line, "=")
+			timeMicro, err := strconv.Atoi(args[1])
+			if err != nil {
+				continue
+			}
+			timeSeconds := (timeMicro / 1000000)
+			if timeSeconds < 0 {
+				continue
+			}
+			wruntime.EventsEmit(a.ctx, video.EVT_ENCODING_PROGRESS, (timeSeconds*100)/int(total))
+		}
+	}
 }
