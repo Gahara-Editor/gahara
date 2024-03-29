@@ -36,8 +36,12 @@ const (
 	EVT_SLICE_CUT = "evt_slice_cut"
 	// EVT_ENCODING_PROGRESS: encoding progress event
 	EVT_ENCODING_PROGRESS = "evt_encoding_progress"
-	// EVT_PIPELINE_MSG: pipeline message event
-	EVT_PIPELINE_MSG = "evt_pipeline_msg"
+	// EVT_PIPELINE_MSG: proxy pipeline message event
+	EVT_PROXY_PIPELINE_MSG = "evt_proxy_pipeline_msg"
+	//EVT_PROXY_ERROR_MSG: error ocurred while creating proxy file
+	EVT_PROXY_ERROR_MSG = "evt_proxy_error_msg"
+	//EVT_ENCODING_PROGRESS: proxy file has been created event
+	EVT_PROXY_FILE_CREATED = "evt_proxy_file_created"
 	//SCALE_640x480: Resolution 640x480 (SD)
 	SCALE_640x480 = "640x480"
 	// SCALE_1280X720: Resolution 1280x720 (HD)

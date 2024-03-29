@@ -52,7 +52,7 @@ func (a *App) startup(ctx context.Context) {
 
 // FilePicker: opens the native file picker for the user
 // this spawns a proxy file creation, if the file is valid
-func (a *App) FilePicker() (Video, error) {
+func (a *App) FilePicker() error {
 	fileFilter := wruntime.FileFilter{
 		DisplayName: "Video Files(*.mov, *.mp4, *.mkv)",
 		Pattern:     "*.mov;*.mp4;*.mkv;*.avi;*.wmv;*.webm;*.avchd",
@@ -66,23 +66,11 @@ func (a *App) FilePicker() (Video, error) {
 	filepath, err := wruntime.OpenFileDialog(a.ctx, openDialogOpts)
 	if err != nil {
 		wruntime.LogError(a.ctx, err.Error())
-		return Video{}, err
+		return err
 	}
 
-	fileName := video.GetFilename(filepath)
-	name, ext, err := video.GetNameAndExtension(fileName)
-	if err != nil {
-		wruntime.LogError(a.ctx, err.Error())
-		return Video{}, err
-	}
-
-	if !video.IsValidExtension("." + ext) {
-		wruntime.LogError(a.ctx, "invalid file extension")
-		return Video{}, fmt.Errorf("invalid file extension")
-	}
-
-	go a.createProxyFile(filepath, name)
-	return Video{Name: fileName, FilePath: path.Join(a.config.ProjectDir, fileName)}, nil
+	go a.createProxyFile(filepath)
+	return nil
 
 }
 

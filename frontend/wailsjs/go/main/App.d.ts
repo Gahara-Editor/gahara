@@ -7,7 +7,7 @@ export function CreateProjectWorkspace(arg1:string):Promise<string>;
 
 export function ExportVideo(arg1:video.ProcessingOpts):Promise<string>;
 
-export function FilePicker():Promise<main.Video>;
+export function FilePicker():Promise<void>;
 
 export function GenerateThumbnail(arg1:string):Promise<void>;
 

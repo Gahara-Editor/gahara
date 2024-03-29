@@ -11,28 +11,45 @@
     FilmIcon,
     ArrowSmDownIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
+  import type { main } from "../wailsjs/go/models";
   import { router, videoStore, videoFiles, trackStore } from "./stores";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import Modal from "./components/Modal.svelte";
   import VideoPlayer from "./components/VideoPlayer.svelte";
   import Timeline from "./components/Timeline.svelte";
   import { draggable } from "./lib/dnd";
-  import { WindowSetTitle } from "../wailsjs/runtime/runtime";
+  import {
+    EventsOff,
+    EventsOn,
+    WindowSetTitle,
+  } from "../wailsjs/runtime/runtime";
   import ToolingLayout from "./ToolingLayout.svelte";
   import FloppyDisk from "./icons/FloppyDisk.svelte";
   import FolderOpenIcon from "./icons/FolderOpenIcon.svelte";
 
   const { setVideoSrc, resetVideo } = videoStore;
   const { addVideoToTrack, trackTime, trackDuration } = trackStore;
-  const { resetVideoFiles } = videoFiles;
+  const {
+    pipelineMessages,
+    videoFilesError,
+    addPipelineMsg,
+    removePipelineMsg,
+    addVideos,
+    setVideoFilesError,
+    resetVideoFiles,
+  } = videoFiles;
   const { setRoute } = router;
-  let fileUploadError = "";
+
+  onMount(() => {
+    loadProjectFiles();
+    loadTimeline();
+  });
 
   function loadProjectFiles() {
     if ($videoFiles.length === 0) {
       ReadProjectWorkspace()
-        .then((files) => videoFiles.addVideos(files))
-        .catch(() => (fileUploadError = "No files in this project"));
+        .then((files) => addVideos(files))
+        .catch(() => setVideoFilesError("No files in this project"));
     }
   }
 
@@ -53,6 +70,12 @@
       .catch(() => console.log("could not save timeline"));
   }
 
+  function selectFile() {
+    FilePicker()
+      .then(() => {})
+      .catch(() => setVideoFilesError("no file selected"));
+  }
+
   function formatSecondsToHMS(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -66,19 +89,25 @@
     return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
   }
 
-  onMount(() => {
-    loadProjectFiles();
-    loadTimeline();
+  EventsOn("evt_proxy_file_created", (video: main.Video) => {
+    setVideoFilesError("");
+    addVideos([video]);
+    removePipelineMsg();
+  });
+  EventsOn("evt_proxy_error_msg", (msg: string) => {
+    setVideoFilesError(msg);
+  });
+  EventsOn("evt_proxy_pipeline_msg", (msg: string) => {
+    addPipelineMsg(msg);
   });
 
-  function selectFile() {
-    FilePicker()
-      .then((video) => {
-        fileUploadError = "";
-        videoFiles.addVideos([video]);
-      })
-      .catch(() => (fileUploadError = "No files selected"));
-  }
+  onDestroy(() => {
+    EventsOff(
+      "evt_proxy_file_created",
+      "evt_error_msg",
+      "evt_proxy_pipeline_msg",
+    );
+  });
 </script>
 
 <div class="h-full text-white rounded-md bg-gprimary flex flex-col">
@@ -144,21 +173,18 @@
         </button>
       </div>
       <div class="flex items-center gap-2">
-        {#if fileUploadError}
+        {#if $videoFilesError}
           <div>
-            {fileUploadError}
+            {$videoFilesError}
           </div>
         {/if}
       </div>
-      {#if videoFiles}
+      {#if $videoFiles}
         <div class="flex flex-col gap-2 max-h-screen overflow-y-auto">
           {#each $videoFiles as video (video.name)}
             <div
               use:draggable={video}
-              class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2"
-              on:click={() => {
-                fileUploadError = "";
-              }}
+              class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2 border-white border-2"
             >
               <button
                 class="bg-red-500 hover:bg-red-400 px-1 py-1 rounded-full"
@@ -167,6 +193,34 @@
                 <XIcon class="h-3 w-3 text-white" />
               </button>
               <p class="text-sm">{video.name}</p>
+            </div>
+          {/each}
+          {#each $pipelineMessages as msg (msg)}
+            <div
+              class="flex items-center bg-obsbg hover:bg-obsternary rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2 border-white border-2 overflow-hidden whitespace-nowrap"
+            >
+              <svg
+                class="animate-spin h-5 w-5 text-white min-w-[20px]"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+
+              <p class="text-sm font-bold">{msg}</p>
             </div>
           {/each}
         </div>
