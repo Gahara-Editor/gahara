@@ -32,32 +32,59 @@ type Interval struct {
 }
 
 // createProxyFile: creates the proxy file to be used for editing (preserve original media)
-func (a *App) createProxyFile(inputFile, fileName string) {
-	proxyFile := fmt.Sprintf("%s.mov", fileName)
+func (a *App) createProxyFile(inputFilePath string) {
+	if inputFilePath == "" {
+		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, "no file selected")
+		return
+	}
+
+	fileName := video.GetFilename(inputFilePath)
+	name, ext, err := video.GetNameAndExtension(fileName)
+	if err != nil {
+		wruntime.LogError(a.ctx, "invalid file format")
+		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, "invalid file format")
+		return
+	}
+
+	if !video.IsValidExtension("." + ext) {
+		wruntime.LogError(a.ctx, "invalid file extension")
+		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, "invalid file extension")
+		return
+	}
+
+	proxyFile := fmt.Sprintf("%s.mov", name)
 	pathProxyFile := path.Join(a.config.ProjectDir, proxyFile)
 
 	// check that a proxy has not already been created for the file
-	_, err := os.Stat(pathProxyFile)
+	_, err = os.Stat(pathProxyFile)
 	if os.IsNotExist(err) {
-		cmd := video.CreateProxyFileCMD(inputFile, pathProxyFile)
+		cmd := video.CreateProxyFileCMD(inputFilePath, pathProxyFile)
+		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_PIPELINE_MSG, name)
 		err := cmd.Run()
 		if err != nil {
-			wruntime.LogError(a.ctx, fmt.Sprintf("could not create the proxy file for %s: %s", inputFile, err.Error()))
+			wruntime.LogError(a.ctx, fmt.Sprintf("could not create the proxy file for %s: %s", inputFilePath, err.Error()))
+			wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, fmt.Sprintf("failed to import %s", fileName))
 			return
 		}
+
+		wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file created: %s", fileName))
+		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_FILE_CREATED,
+			Video{Name: name, FilePath: a.config.ProjectDir, Extension: filepath.Ext(fileName)})
 
 		// Once the proxy file is created, generate a thumbnail
 		err = a.GenerateThumbnail(pathProxyFile)
 		if err != nil {
-			wruntime.LogError(a.ctx, fmt.Sprintf("could not generate thumbnail for proxy file %s: %s", inputFile, err.Error()))
+			wruntime.LogError(a.ctx, fmt.Sprintf("could not generate thumbnail for proxy file %s: %s", inputFilePath, err.Error()))
 		}
-		wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file created: %s", fileName))
 		return
 	} else if err != nil {
 		wruntime.LogError(a.ctx, fmt.Sprintf("file finding error: %s", err.Error()))
+		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, fmt.Sprintf("failed to import %s", fileName))
+		return
 	}
 
 	wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file found: %s", fileName))
+	wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, fmt.Sprintf("file is already in project %s", fileName))
 
 }
 

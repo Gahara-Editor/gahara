@@ -29,6 +29,19 @@ function createRouterStore() {
 
 function createFilesytemStore() {
   const { subscribe, set, update } = writable<main.Video[]>([]);
+  const videoFilesError = writable<string>("");
+  const pipelineMessages = writable<string[]>([]);
+
+  const { set: setVideoFilesError } = videoFilesError;
+  const { set: setPipelineMsgs, update: updatePipelineMsgs } = pipelineMessages;
+
+  const addPipelineMsg = (msg: string) => {
+    updatePipelineMsgs((msgs) => (msgs = [...msgs, msg]));
+  };
+
+  const removePipelineMsg = () => {
+    updatePipelineMsgs((msgs) => (msgs = [...msgs.slice(1)]));
+  };
 
   const addVideos = (videos: main.Video[]) => {
     // TODO: handle duplicated keys
@@ -46,11 +59,18 @@ function createFilesytemStore() {
 
   const resetVideoFiles = () => {
     set([]);
+    setPipelineMsgs([]);
+    setVideoFilesError("");
   };
 
   return {
     subscribe,
     addVideos,
+    videoFilesError,
+    setVideoFilesError,
+    pipelineMessages,
+    addPipelineMsg,
+    removePipelineMsg,
     removeVideo,
     resetVideoFiles,
   };
