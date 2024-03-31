@@ -46,10 +46,11 @@ export namespace video {
 	    }
 	}
 	export class VideoNode {
-	    rid: string;
-	    id: string;
 	    start: number;
 	    end: number;
+	    rid: string;
+	    id: string;
+	    name: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new VideoNode(source);
@@ -57,10 +58,11 @@ export namespace video {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.rid = source["rid"];
-	        this.id = source["id"];
 	        this.start = source["start"];
 	        this.end = source["end"];
+	        this.rid = source["rid"];
+	        this.id = source["id"];
+	        this.name = source["name"];
 	    }
 	}
 	export class Timeline {

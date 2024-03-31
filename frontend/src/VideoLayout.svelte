@@ -5,6 +5,8 @@
     LoadTimeline,
     SaveTimeline,
     ResetTimeline,
+    DeleteRIDReferences,
+    DeleteProjectFile,
   } from "../wailsjs/go/main/App";
   import {
     XIcon,
@@ -26,12 +28,20 @@
   import ToolingLayout from "./ToolingLayout.svelte";
   import FloppyDisk from "./icons/FloppyDisk.svelte";
   import FolderOpenIcon from "./icons/FolderOpenIcon.svelte";
+  import TrashIcon from "./icons/TrashIcon.svelte";
+  import WarningIcon from "./icons/WarningIcon.svelte";
 
   const { setVideoSrc, resetVideo } = videoStore;
-  const { addVideoToTrack, trackTime, trackDuration } = trackStore;
+  const {
+    addVideoToTrack,
+    removeRIDReferencesFromTrack,
+    trackTime,
+    trackDuration,
+  } = trackStore;
   const {
     pipelineMessages,
     videoFilesError,
+    removeVideoFile,
     addPipelineMsg,
     removePipelineMsg,
     addVideos,
@@ -74,6 +84,18 @@
     FilePicker()
       .then(() => {})
       .catch(() => setVideoFilesError("no file selected"));
+  }
+
+  async function deleteVideoFile(video: main.Video) {
+    try {
+      const rid = `${video.filepath}/${video.name}${video.extension}`;
+      await Promise.all([DeleteRIDReferences(rid), DeleteProjectFile(rid)]);
+      await SaveTimeline();
+      removeRIDReferencesFromTrack(0, rid);
+      removeVideoFile(video.name);
+    } catch (err) {
+      setVideoFilesError(err);
+    }
   }
 
   function formatSecondsToHMS(seconds: number): string {
@@ -134,11 +156,11 @@
           </div>
           <div slot="footer" let:store={{ close }} class="flex gap-2">
             <button
-              class="rounded-lg bg-red-500 font-semibold text-white inline-flex items-center px-2 py-0.5 hover:bg-red-700 transition ease-in-out duration-200 border-2 border-white"
+              class="rounded-lg bg-gred1 font-semibold text-white inline-flex items-center px-2 py-0.5 hover:bg-gred transition ease-in-out duration-200 border-2 border-white"
               on:click={close}>Back</button
             >
             <button
-              class="bg-gdark rounded-lg px-2 py-1 border-2 border-white flex items-center gap-2 hover:bg-gblue0 transition ease-in-out duration-200"
+              class="bg-gblue0 rounded-lg px-2 py-1 border-2 border-white flex items-center gap-2 hover:bg-gblue transition ease-in-out duration-200"
               on:click={() => {
                 resetVideoFiles();
                 resetVideo();
@@ -186,12 +208,52 @@
               use:draggable={video}
               class="flex items-center bg-gprimary hover:bg-stone-700 rounded-lg p-2 cursor-grab transition ease-in-out duration-500 gap-2 border-white border-2"
             >
-              <button
-                class="bg-red-500 hover:bg-red-400 px-1 py-1 rounded-full"
-                on:click={() => videoFiles.removeVideo(video.name)}
-              >
-                <XIcon class="h-3 w-3 text-white" />
-              </button>
+              <Modal>
+                <div slot="trigger" let:open>
+                  <button
+                    class="bg-red-500 hover:bg-red-400 px-1 py-1 rounded-full"
+                    on:click={open}
+                  >
+                    <XIcon class="h-3 w-3 text-white" />
+                  </button>
+                </div>
+                <div
+                  slot="header"
+                  class="font-semibold flex items-center justify-center gap-2"
+                >
+                  <WarningIcon class="h-5 w-5 text-white" />
+                  <h1>Delete File</h1>
+                </div>
+                <div slot="content">
+                  <p class="text-center font-semibold">
+                    Do you want to delete {video.name}?
+                  </p>
+                  <p>
+                    All of the clips in the timeline that reference this file
+                    will also be deleted
+                  </p>
+                </div>
+                <div
+                  slot="footer"
+                  let:store={{ close }}
+                  class="flex items-center justify-center gap-2"
+                >
+                  <button
+                    class="rounded-lg bg-gred1 font-semibold text-white inline-flex items-center px-2 py-0.5 hover:bg-gred transition ease-in-out duration-200 border-2 border-white"
+                    on:click={close}>Back</button
+                  >
+                  <button
+                    class="bg-gblue0 rounded-lg px-2 py-1 border-2 border-white flex items-center gap-2 hover:bg-gblue transition ease-in-out duration-200"
+                    on:click={() => {
+                      deleteVideoFile(video);
+                    }}
+                  >
+                    <TrashIcon class="h-5 w-5 text-white" />
+                    <span>Delete File</span>
+                  </button>
+                </div>
+              </Modal>
+
               <p class="text-sm">{video.name}</p>
             </div>
           {/each}

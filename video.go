@@ -140,7 +140,7 @@ func (a *App) GetThumbnail(inputFilePath string) error {
 // SaveTimeline: save project timeline into the project filesystem
 func (a *App) SaveTimeline() error {
 	if a.Timeline.VideoNodes == nil && len(a.Timeline.VideoNodes) <= 0 {
-		return fmt.Errorf("Timeline is empty, could not save timeline")
+		return fmt.Errorf("timeline is empty, could not save timeline")
 	}
 	data, err := json.MarshalIndent(a.Timeline, "", "  ")
 	if err != nil {
@@ -175,6 +175,11 @@ func (a *App) LoadTimeline() (video.Timeline, error) {
 		return timeline, err
 	}
 
+	if len(a.Timeline.VideoNodes) == 0 {
+		wruntime.LogInfo(a.ctx, "empty timeline")
+		return timeline, fmt.Errorf("empty timeline")
+	}
+
 	wruntime.LogInfo(a.ctx, "timeline file has been found!")
 	return a.GetTimeline(), nil
 }
@@ -199,13 +204,19 @@ func (a *App) SplitInterval(eventType string, pos int, start, end float64) ([]vi
 	return a.Timeline.Split(eventType, pos, start, end)
 }
 
+// DeleteRIDReferences: removes all timeline references of a root id
+func (a *App) DeleteRIDReferences(rid string) error {
+	return a.Timeline.DeleteRIDReferences(rid)
+}
+
 // ResetTimeline: cleanup timeline state in memory
 func (a *App) ResetTimeline() {
 	a.Timeline = video.NewTimeline()
 }
 
+// GetTrackDuration: retrieves the total video duration of a track
 func (a *App) GetTrackDuration() (float64, error) {
-	if a.Timeline.VideoNodes == nil || len(a.Timeline.VideoNodes) == 0 {
+	if a.Timeline.VideoNodes == nil {
 		return 0, fmt.Errorf("no timeline exists")
 	}
 

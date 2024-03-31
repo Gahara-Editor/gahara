@@ -154,7 +154,7 @@ func (a *App) ReadGaharaWorkspace() ([]string, error) {
 
 	if len(projectsDirectories) <= 0 {
 		wruntime.LogError(a.ctx, "Gahara workspace exists, but no project workspace was found")
-		return nil, fmt.Errorf("Gahara workspace exists, but no project workspace was found")
+		return nil, fmt.Errorf("gahara workspace exists, but no project workspace was found")
 	}
 
 	wruntime.LogInfo(a.ctx, "project directories loaded successfully")
@@ -188,11 +188,28 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 
 	if len(projectFiles) <= 0 {
 		wruntime.LogError(a.ctx, "Project workspace exists, but no files were found")
-		return nil, fmt.Errorf("Project workspace exists, but no files were found")
+		return nil, fmt.Errorf("project workspace exists, but no files were found")
 	}
 
 	wruntime.LogInfo(a.ctx, "project files loaded successfully")
 	return projectFiles, nil
+}
+
+// DeleteProjectFile: delete a project file (root id form)
+func (a *App) DeleteProjectFile(rid string) error {
+	_, err := os.Stat(rid)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("file %s  does not exists", video.GetFilename(rid))
+		}
+		return err
+	}
+
+	err = os.Remove(rid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GaharaSetup: setup of gahara on startup (workspace and config.json)

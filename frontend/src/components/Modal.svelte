@@ -57,7 +57,7 @@
     />
     <div
       id="content-wrap"
-      class="z-10 max-w-[70vw] rounded-[0.3rem] bg-gblue0 overflow-hidden md:max-w-[100vw] px-4 py-2 flex flex-col gap-4 border-white border-2"
+      class="z-10 max-w-[70vw] rounded-[0.3rem] bg-obsbg overflow-hidden md:max-w-[100vw] px-4 py-2 flex flex-col gap-4 border-white border-2"
     >
       <slot name="header">
         <!-- fallback -->

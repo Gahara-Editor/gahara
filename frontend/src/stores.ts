@@ -48,7 +48,7 @@ function createFilesytemStore() {
     update((projectFiles) => (projectFiles = [...projectFiles, ...videos]));
   };
 
-  const removeVideo = (fileName: string) => {
+  const removeVideoFile = (fileName: string) => {
     update(
       (projectFiles) =>
         (projectFiles = projectFiles.filter(
@@ -71,7 +71,7 @@ function createFilesytemStore() {
     pipelineMessages,
     addPipelineMsg,
     removePipelineMsg,
-    removeVideo,
+    removeVideoFile,
     resetVideoFiles,
   };
 }
@@ -118,7 +118,6 @@ function createTracksStore() {
       }
       return tracks;
     });
-
     updateTrackDuration((tDuration) => (tDuration += video.end - video.start));
   };
 
@@ -138,12 +137,28 @@ function createTracksStore() {
 
   const removeVideoFromTrack = (id: number, videoNode: video.VideoNode) => {
     update((tracks) => {
-      tracks[id] = tracks[0].filter((v) => v.id !== videoNode.id);
+      if (!tracks[id]) return tracks;
+      tracks[id] = tracks[id].filter((v) => v.id !== videoNode.id);
       return tracks;
     });
     updateTrackDuration(
       (tDuration) => (tDuration -= videoNode.end - videoNode.start),
     );
+  };
+
+  const removeRIDReferencesFromTrack = (id: number, rid: string) => {
+    let durationRemoved = 0;
+    update((tracks) => {
+      if (!tracks[id]) return tracks;
+      tracks[id] = tracks[id].filter((v) => {
+        if (v.rid === rid) {
+          durationRemoved += v.end - v.start;
+        }
+        return v.rid !== rid;
+      });
+      return tracks;
+    });
+    updateTrackDuration((tDuration) => (tDuration -= durationRemoved));
   };
 
   const resetTrackStore = () => {
@@ -159,6 +174,7 @@ function createTracksStore() {
     addVideoToTrack,
     removeVideoFromTrack,
     removeAndAddIntervalToTrack,
+    removeRIDReferencesFromTrack,
     trackDuration,
     resetTrackStore,
   };
