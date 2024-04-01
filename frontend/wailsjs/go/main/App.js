@@ -6,6 +6,14 @@ export function CreateProjectWorkspace(arg1) {
   return window['go']['main']['App']['CreateProjectWorkspace'](arg1);
 }
 
+export function DeleteProjectFile(arg1) {
+  return window['go']['main']['App']['DeleteProjectFile'](arg1);
+}
+
+export function DeleteRIDReferences(arg1) {
+  return window['go']['main']['App']['DeleteRIDReferences'](arg1);
+}
+
 export function ExportVideo(arg1) {
   return window['go']['main']['App']['ExportVideo'](arg1);
 }

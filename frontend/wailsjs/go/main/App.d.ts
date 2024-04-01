@@ -5,6 +5,10 @@ import {main} from '../models';
 
 export function CreateProjectWorkspace(arg1:string):Promise<string>;
 
+export function DeleteProjectFile(arg1:string):Promise<void>;
+
+export function DeleteRIDReferences(arg1:string):Promise<void>;
+
 export function ExportVideo(arg1:video.ProcessingOpts):Promise<string>;
 
 export function FilePicker():Promise<void>;

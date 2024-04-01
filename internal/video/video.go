@@ -85,14 +85,16 @@ const (
 )
 
 type VideoNode struct {
-	// RID: the root ID of the node, that is, the original video from which this nodes derives
-	RID string `json:"rid"`
-	// ID: the ID of the video node
-	ID string `json:"id"`
 	// Start: the start of the interval
 	Start float64 `json:"start"`
 	// End: the end of the interval
 	End float64 `json:"end"`
+	// RID: the root ID of the node, that is, the original video from which this nodes derives
+	RID string `json:"rid"`
+	// ID: the ID of the video node
+	ID string `json:"id"`
+	// Name: the name given by the user to the clip
+	Name string `json:"name"`
 }
 
 type Timeline struct {
@@ -132,6 +134,7 @@ func createVideoNode(rid string, start, end float64) VideoNode {
 	return VideoNode{
 		RID:   rid,
 		ID:    strings.Replace(uuid.New().String(), "-", "", -1),
+		Name:  "",
 		Start: start,
 		End:   end,
 	}
@@ -140,7 +143,7 @@ func createVideoNode(rid string, start, end float64) VideoNode {
 func (tl *Timeline) Insert(rid string, start, end float64, pos int) (VideoNode, error) {
 	var videoNode VideoNode
 	if pos < 0 || pos > len(tl.VideoNodes) {
-		return videoNode, fmt.Errorf("Insertion position is invalid")
+		return videoNode, fmt.Errorf("insertion position is invalid")
 	}
 
 	videoNode = createVideoNode(rid, start, end)
@@ -151,7 +154,7 @@ func (tl *Timeline) Insert(rid string, start, end float64, pos int) (VideoNode, 
 
 func (tl *Timeline) Delete(pos int) error {
 	if pos < 0 || pos > len(tl.VideoNodes) {
-		return fmt.Errorf("Insertion position is invalid")
+		return fmt.Errorf("insertion position is invalid")
 	}
 	tl.VideoNodes = append(tl.VideoNodes[:pos], tl.VideoNodes[pos+1:]...)
 	return nil
@@ -160,7 +163,7 @@ func (tl *Timeline) Delete(pos int) error {
 func (tl *Timeline) Split(eventType string, pos int, start, end float64) ([]VideoNode, error) {
 	nodes := []VideoNode{}
 	if pos < 0 || pos > len(tl.VideoNodes) {
-		return nodes, fmt.Errorf("Split position is invalid")
+		return nodes, fmt.Errorf("split position is invalid")
 	}
 
 	splitNode := tl.VideoNodes[pos]
@@ -182,6 +185,16 @@ func (tl *Timeline) Split(eventType string, pos int, start, end float64) ([]Vide
 	}
 	tl.VideoNodes = append(tl.VideoNodes[:pos], append(nodes, tl.VideoNodes[pos+1:]...)...)
 	return nodes, nil
+}
+
+func (tl *Timeline) DeleteRIDReferences(rid string) error {
+	if tl.VideoNodes == nil {
+		return fmt.Errorf("no timeline exists")
+	}
+	tl.VideoNodes = slices.DeleteFunc(tl.VideoNodes, func(vn VideoNode) bool {
+		return vn.RID == rid
+	})
+	return nil
 }
 
 func (tl *Timeline) MergeClipsQuery(opts *ProcessingOpts) (string, error) {
@@ -213,6 +226,9 @@ func (tl *Timeline) MergeClipsQuery(opts *ProcessingOpts) (string, error) {
 }
 
 func (tl *Timeline) InputArgs() (string, error) {
+	if tl.VideoNodes == nil || len(tl.VideoNodes) == 0 {
+		return "", fmt.Errorf("no timeline exists")
+	}
 	var pos int
 	var query strings.Builder
 	inputToPos := map[string]int{}
@@ -271,7 +287,7 @@ Ex: filename.txt -> [filename, txt]
 func GetNameAndExtension(fileName string) (name string, ext string, err error) {
 	fileSlice := strings.Split(fileName, ".")
 	if len(fileSlice) != 2 {
-		return "", "", fmt.Errorf("Invalid file format, %s does not contain a file extension", fileName)
+		return "", "", fmt.Errorf("invalid file format, %s does not contain a file extension", fileName)
 	}
 	return fileSlice[0], fileSlice[1], nil
 }
