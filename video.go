@@ -137,6 +137,36 @@ func (a *App) GetThumbnail(inputFilePath string) error {
 
 }
 
+func (a *App) GetProjectThumbnail(projectName string) (string, error) {
+	thumbnailDir := path.Join(a.config.GaharaDir, projectName)
+	projectDir, err := os.Open(thumbnailDir)
+	if err != nil {
+		wruntime.LogError(a.ctx, "directory does not exists for the project")
+		return "", err
+	}
+	defer projectDir.Close()
+
+	files, err := projectDir.ReadDir(0)
+	if err != nil {
+		wruntime.LogError(a.ctx, "could not read the files of the project")
+		return "", err
+	}
+
+	var thumbnailPath string
+	for _, project := range files {
+		if !project.IsDir() && filepath.Ext(project.Name()) == ".png" {
+			thumbnailPath = path.Join(thumbnailDir, project.Name())
+			break
+		}
+	}
+
+	if thumbnailPath == "" {
+		return thumbnailPath, fmt.Errorf("no thumbnail found")
+	}
+	return thumbnailPath, nil
+
+}
+
 // SaveTimeline: save project timeline into the project filesystem
 func (a *App) SaveTimeline() error {
 	if a.Timeline.VideoNodes == nil && len(a.Timeline.VideoNodes) <= 0 {

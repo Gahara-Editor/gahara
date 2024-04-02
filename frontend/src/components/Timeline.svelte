@@ -4,6 +4,9 @@
   import type { video } from "wailsjs/go/models";
   import { videoStore, toolingStore, trackStore } from "../stores";
   import Playhead from "../icons/Playhead.svelte";
+  import { slide } from "svelte/transition";
+  import { cubicIn, cubicOut } from "svelte/easing";
+  import { flip } from "svelte/animate";
 
   const { setVideoSrc, currentTime, setCurrentTime } = videoStore;
   const {
@@ -274,41 +277,50 @@
     >
       <!-- Video Track -->
       {#each track as tVideo, pos (tVideo.id)}
-        {#if $editMode === "intervalCut" && $videoNode && $videoNode.id === tVideo.id}
+        <div
+          animate:flip={{ duration: 100 }}
+          out:slide={{ axis: "x", duration: 100, easing: cubicOut }}
+        >
+          {#if $editMode === "intervalCut" && $videoNode && $videoNode.id === tVideo.id}
+            <div
+              class="absolute border-yellow-500 border-2 h-24 cursor-grab"
+              style={`width: ${
+                (tVideo.end - tVideo.start) * 20
+              }px; left: ${$boxLeftBound}px`}
+              bind:this={cutRangeBox}
+              id="cut-range"
+              on:mousemove={(e) => {
+                handleEditModeMouseMove(e, pos, tVideo);
+              }}
+              on:mousedown={(e) => {
+                handleEditModeMouseDown(e);
+              }}
+            ></div>
+          {/if}
+          <!-- Video Nodes of this track -->
           <div
-            class="absolute border-yellow-500 border-2 h-24 cursor-grab"
+            id={`videoNode-${tVideo.id}`}
+            class="h-full bg-gblue0 border-white border-2 cursor-pointer select-none overflow-hidden"
             style={`width: ${
               (tVideo.end - tVideo.start) * 20
-            }px; left: ${$boxLeftBound}px`}
-            bind:this={cutRangeBox}
-            id="cut-range"
+            }px; border-color: ${
+              $editMode === "remove" &&
+              $videoNode &&
+              $videoNode.id === tVideo.id
+                ? "#f7768e"
+                : "#ffffff"
+            }; `}
+            on:click={(e) => handleBoxRender(e, pos, tVideo)}
             on:mousemove={(e) => {
               handleEditModeMouseMove(e, pos, tVideo);
             }}
             on:mousedown={(e) => {
               handleEditModeMouseDown(e);
             }}
-          ></div>
-        {/if}
-        <!-- Video Nodes of this track -->
-        <div
-          id={`videoNode-${tVideo.id}`}
-          class="h-full bg-gblue0 border-white border-2 cursor-pointer select-none overflow-hidden"
-          style={`width: ${(tVideo.end - tVideo.start) * 20}px; border-color: ${
-            $editMode === "remove" && $videoNode && $videoNode.id === tVideo.id
-              ? "#f7768e"
-              : "#ffffff"
-          }; `}
-          on:click={(e) => handleBoxRender(e, pos, tVideo)}
-          on:mousemove={(e) => {
-            handleEditModeMouseMove(e, pos, tVideo);
-          }}
-          on:mousedown={(e) => {
-            handleEditModeMouseDown(e);
-          }}
-        >
-          Node
-          {tVideo.end - tVideo.start}
+          >
+            Node
+            {tVideo.end - tVideo.start}
+          </div>
         </div>
       {/each}
     </div>

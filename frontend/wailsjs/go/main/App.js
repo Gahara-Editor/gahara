@@ -30,6 +30,10 @@ export function GetOutputFileSavePath() {
   return window['go']['main']['App']['GetOutputFileSavePath']();
 }
 
+export function GetProjectThumbnail(arg1) {
+  return window['go']['main']['App']['GetProjectThumbnail'](arg1);
+}
+
 export function GetThumbnail(arg1) {
   return window['go']['main']['App']['GetThumbnail'](arg1);
 }

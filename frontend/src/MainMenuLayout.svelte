@@ -2,18 +2,29 @@
   import {
     CreateProjectWorkspace,
     ReadGaharaWorkspace,
-    SetProjectDirectory,
   } from "../wailsjs/go/main/App";
-  import { ChevronDownIcon } from "@rgossiaux/svelte-heroicons/solid";
-  import { router, projectName } from "./stores";
+  import {
+    ArrowLeftIcon,
+    ArrowRightIcon,
+  } from "@rgossiaux/svelte-heroicons/solid";
+  import { router, projectName, mainMenuStore } from "./stores";
   import { WindowSetTitle } from "../wailsjs/runtime/runtime";
+  import ProjectCard from "./components/ProjectCard.svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { flip } from "svelte/animate";
+  import { slide } from "svelte/transition";
 
   const { setRoute } = router;
+  const { carouselIdx, updateCarouselIdx, resetMainMenuStore } = mainMenuStore;
 
   let createProjectView: boolean;
   let loadProjectView: boolean;
   let mainMenuError: string = "";
   let projects: string[];
+
+  onMount(() => {
+    loadProjects();
+  });
 
   function createProject() {
     CreateProjectWorkspace($projectName)
@@ -30,15 +41,18 @@
       .then((res) => (projects = res))
       .catch(console.log);
   }
-  loadProjects();
 
-  function handleProjectSelected() {
-    SetProjectDirectory($projectName).then(() => {
-      WindowSetTitle($projectName);
-      setRoute("video");
-    });
+  function handleNext() {
+    if ($carouselIdx < projects.length - 1) {
+      updateCarouselIdx((idx) => idx + 1);
+    }
   }
 
+  function handlePrevious() {
+    if ($carouselIdx > 0) {
+      updateCarouselIdx((idx) => idx - 1);
+    }
+  }
   function MainMenuView() {
     createProjectView = false;
     loadProjectView = false;
@@ -56,6 +70,10 @@
     loadProjectView = true;
     mainMenuError = "";
   }
+
+  onDestroy(() => {
+    resetMainMenuStore();
+  });
 </script>
 
 <div class="h-full flex flex-col items-center justify-center gap-4">
@@ -112,36 +130,35 @@
     </div>
   {/if}
   {#if loadProjectView}
-    <div class="flex flex-col gap-1">
+    <div class="flex flex-col items-center justify-center">
       {#if projects}
-        <div class="flex gap-2">
-          <div class="relative inline-flex">
-            <select
-              id="projectNames"
-              bind:value={$projectName}
-              class="block appearance-none w-full bg-white border border-indigo-500 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-indigo-600"
-            >
-              {#each projects as project (project)}
-                <option value={project}>
-                  {project.length > 25
-                    ? `${project.substring(0, 25)}...`
-                    : project}
-                </option>
-              {/each}
-            </select>
-            <div
-              class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500"
-            >
-              <ChevronDownIcon class="h-6 w-6" />
-            </div>
+        <div class="flex items-center justify-center gap-4">
+          <button
+            on:click={handlePrevious}
+            disabled={$carouselIdx === 0}
+            class={$carouselIdx === 0 ? "text-gray-400" : "text-white"}
+          >
+            <ArrowLeftIcon class="h-6 w-6" />
+          </button>
+          <div class="flex items-center justify-center p-2 gap-2">
+            {#each projects as project, idx (project)}
+              <div animate:flip={{ duration: 400 }} in:slide>
+                {#if idx >= $carouselIdx && idx < $carouselIdx + 3}
+                  <ProjectCard {project} {idx} />
+                {/if}
+              </div>
+            {/each}
           </div>
           <button
-            disabled={$projectName == ""}
-            class="rounded-full bg-indigo-500 font-semibold text-white px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200"
-            on:click={() => handleProjectSelected()}>Load</button
+            on:click={handleNext}
+            disabled={$carouselIdx >= projects.length - 3}
+            class={$carouselIdx >= projects.length - 3
+              ? "text-gray-400"
+              : "text-white"}
           >
+            <ArrowRightIcon class="h-6 w-6" />
+          </button>
         </div>
-        <div class="text-white 2xl">project previes</div>
       {:else}
         <p class="text-white text-lg">No projects found</p>
       {/if}
