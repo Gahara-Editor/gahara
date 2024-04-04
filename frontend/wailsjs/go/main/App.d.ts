@@ -17,6 +17,8 @@ export function GenerateThumbnail(arg1:string):Promise<void>;
 
 export function GetOutputFileSavePath():Promise<string>;
 
+export function GetProjectThumbnail(arg1:string):Promise<string>;
+
 export function GetThumbnail(arg1:string):Promise<void>;
 
 export function GetTimeline():Promise<video.Timeline>;

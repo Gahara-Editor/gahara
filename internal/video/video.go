@@ -42,6 +42,10 @@ const (
 	EVT_PROXY_ERROR_MSG = "evt_proxy_error_msg"
 	//EVT_ENCODING_PROGRESS: proxy file has been created event
 	EVT_PROXY_FILE_CREATED = "evt_proxy_file_created"
+	//SCALE_256x256: Resolution 256x256
+	SCALE_256x256 = "256x256"
+	//SCALE_316_192: Resolution 316x192
+	SCALE_316_192 = "316x192"
 	//SCALE_640x480: Resolution 640x480 (SD)
 	SCALE_640x480 = "640x480"
 	// SCALE_1280X720: Resolution 1280x720 (HD)
@@ -266,7 +270,7 @@ func GenerateEditThumb(inputFilePath string, outputFilePath string, opts Thumbna
 	return exec.Command("ffmpeg",
 		"-i", inputFilePath, // input file
 		"-vframes", "1", // pick 1 frame from the video
-		"-s", "256x256", // scale of the video frame
+		"-s", SCALE_316_192, // scale of the video frame
 		outputFilePath, // output file
 	)
 }

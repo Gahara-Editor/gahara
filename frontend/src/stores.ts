@@ -27,6 +27,22 @@ function createRouterStore() {
   };
 }
 
+function createMainMenuStore() {
+  const carouselIdx = writable<number>(0);
+  const { set: setCarouselIdx, update: updateCarouselIdx } = carouselIdx;
+
+  function resetMainMenuStore() {
+    setCarouselIdx(0);
+  }
+
+  return {
+    carouselIdx,
+    setCarouselIdx,
+    updateCarouselIdx,
+    resetMainMenuStore,
+  };
+}
+
 function createFilesytemStore() {
   const { subscribe, set, update } = writable<main.Video[]>([]);
   const videoFilesError = writable<string>("");
@@ -439,6 +455,7 @@ function createExportOptionsStore() {
 
 export const router = createRouterStore();
 export const videoFiles = createFilesytemStore();
+export const mainMenuStore = createMainMenuStore();
 export const trackStore = createTracksStore();
 export const projectName = writable("");
 export const draggedVideo = createVideoTransferStore();
