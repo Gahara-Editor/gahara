@@ -195,6 +195,16 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 	return projectFiles, nil
 }
 
+// DeleteProject: deletes a video project and all of its related files
+func (a *App) DeleteProject(name string) error {
+	path := path.Join(a.config.GaharaDir, name)
+	err := os.RemoveAll(path)
+	if err != nil {
+		return fmt.Errorf("could not delete the project")
+	}
+	return nil
+}
+
 // DeleteProjectFile: delete a project file (root id form)
 func (a *App) DeleteProjectFile(rid string) error {
 	_, err := os.Stat(rid)

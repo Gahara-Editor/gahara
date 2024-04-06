@@ -221,7 +221,7 @@
                   slot="header"
                   class="font-semibold flex items-center justify-center gap-2"
                 >
-                  <WarningIcon class="h-5 w-5 text-white" />
+                  <WarningIcon class="h-5 w-5 text-gyellow" />
                   <h1>Delete File</h1>
                 </div>
                 <div slot="content">
