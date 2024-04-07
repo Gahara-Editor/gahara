@@ -7,6 +7,8 @@
     ResetTimeline,
     DeleteRIDReferences,
     DeleteProjectFile,
+    EnableVideoMenus,
+    SetDefaultAppMenu,
   } from "../wailsjs/go/main/App";
   import {
     XIcon,
@@ -53,6 +55,7 @@
   onMount(() => {
     loadProjectFiles();
     loadTimeline();
+    EnableVideoMenus();
   });
 
   function loadProjectFiles() {
@@ -124,6 +127,7 @@
   });
 
   onDestroy(() => {
+    SetDefaultAppMenu();
     EventsOff(
       "evt_proxy_file_created",
       "evt_error_msg",

@@ -2,19 +2,31 @@
   import { dropzone } from "../lib/dnd";
   import { onDestroy } from "svelte";
   import type { video } from "wailsjs/go/models";
-  import { videoStore, toolingStore, trackStore } from "../stores";
+  import {
+    videoStore,
+    toolingStore,
+    trackStore,
+    createBooleanStore,
+  } from "../stores";
   import Playhead from "../icons/Playhead.svelte";
   import { slide } from "svelte/transition";
-  import { cubicIn, cubicOut } from "svelte/easing";
+  import { cubicOut } from "svelte/easing";
   import { flip } from "svelte/animate";
+  import { EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
+  import EventModal from "./EventModal.svelte";
+  import { RenameVideoNode } from "../../wailsjs/go/main/App";
+  import RenameIcon from "../icons/RenameIcon.svelte";
 
+  const { isOpen, close, open } = createBooleanStore(false);
   const { setVideoSrc, currentTime, setCurrentTime } = videoStore;
   const {
     cutStart,
     cutEnd,
     editMode,
     videoNode,
+    videoNodePos,
     videoNodeWidth,
+    videoNodeName,
     playheadPos,
     isMovingPlayhead,
     isMovingCutRangeBox,
@@ -25,6 +37,7 @@
     setCutEnd,
     setPlayheadPos,
     setVideoNode,
+    setVideoNodeName,
     setVideoNodePos,
     setVideoNodeWidth,
     setClipStart,
@@ -33,7 +46,8 @@
     setBoxRightBound,
     resetToolingStore,
   } = toolingStore;
-  const { trackDuration, setTrackTime, resetTrackStore } = trackStore;
+  const { trackDuration, setTrackTime, renameClipInTrack, resetTrackStore } =
+    trackStore;
 
   let selectedID = 0;
   let trackNode: HTMLDivElement;
@@ -240,7 +254,29 @@
     setBoxRightBound(e.currentTarget.offsetLeft + e.currentTarget.clientWidth);
   }
 
+  function handleVideoNodeRename() {
+    if ($videoNodeName === "") return;
+    RenameVideoNode($videoNodePos, $videoNodeName)
+      .then(() => {
+        renameClipInTrack(0, $videoNodePos, $videoNodeName);
+        setVideoNodeName("");
+      })
+      .catch(console.log);
+    close();
+  }
+
+  EventsOn("evt_open_rename_clip_modal", () => {
+    if ($videoNode) {
+      open();
+    }
+  });
+
+  EventsOn("evt_rename_clip", () => {
+    handleVideoNodeRename();
+  });
+
   onDestroy(() => {
+    EventsOff("evt_open_rename_clip_modal", "evt_rename_clip");
     resetTrackStore();
     resetToolingStore();
   });
@@ -252,6 +288,44 @@
   use:dropzone={{}}
   on:mouseup={() => handleEditModeMouseUp()}
 >
+  <EventModal {isOpen} {close}>
+    <div
+      slot="header"
+      class="font-semibold flex items-center justify-center gap-2"
+    >
+      <RenameIcon class="h-5 w-5 text-gyellow" />
+      <h1>Rename Clip</h1>
+    </div>
+    <div slot="content">
+      <div class="flex flex-col items-center justify-center gap-2">
+        <p class="text-center font-semibold">
+          rename video clip ({$videoNode.name})
+        </p>
+        <input
+          type="text"
+          bind:value={$videoNodeName}
+          class="p-1 rounded-sm text-black"
+          autocorrect="off"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+    <div slot="footer" class="flex items-center justify-center gap-2">
+      <button
+        class="flex items-center justify-center rounded-lg bg-gred1 font-semibold text-white px-4 py-1.5 hover:bg-gred transition ease-in-out duration-200 border-2 border-white gap-2"
+        on:click={close}>Back</button
+      >
+      <button
+        class="flex items-center justify-center rounded-lg bg-gblue0 font-semibold text-white px-4 py-1.5 hover:bg-gblue transition ease-in-out duration-200 border-2 border-white gap-2"
+        on:click={() => {
+          handleVideoNodeRename();
+        }}
+      >
+        <span>Rename</span>
+      </button>
+    </div>
+  </EventModal>
+
   {#if $trackStore.length <= 0}
     <div class="flex justify-center items-center">
       <p class="text-white text-4xl font-semibold select-none">
@@ -318,7 +392,7 @@
               handleEditModeMouseDown(e);
             }}
           >
-            Node
+            {tVideo.name}
             {tVideo.end - tVideo.start}
           </div>
         </div>

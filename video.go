@@ -239,6 +239,10 @@ func (a *App) DeleteRIDReferences(rid string) error {
 	return a.Timeline.DeleteRIDReferences(rid)
 }
 
+func (a *App) RenameVideoNode(pos int, name string) error {
+	return a.Timeline.RenameVideoNode(pos, name)
+}
+
 // ResetTimeline: cleanup timeline state in memory
 func (a *App) ResetTimeline() {
 	a.Timeline = video.NewTimeline()

@@ -10,6 +10,9 @@ import (
 	"strings"
 
 	"github.com/k1nho/gahara/internal/video"
+	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -220,6 +223,32 @@ func (a *App) DeleteProjectFile(rid string) error {
 		return err
 	}
 	return nil
+}
+
+func (a *App) AppMenu(menuItems ...menu.MenuItem) *menu.Menu {
+	return menu.NewMenuFromItems(menu.AppMenu(), menu.EditMenu(), menu.WindowMenu())
+}
+
+// SetDefaultAppMenu: it sets the default menu
+func (a *App) SetDefaultAppMenu() {
+	runtime.MenuSetApplicationMenu(a.ctx, a.AppMenu())
+	runtime.MenuUpdateApplicationMenu(a.ctx)
+}
+
+// EnableVideoMenus: It enables the menus for the video layout view
+func (a *App) EnableVideoMenus() {
+	timelineMenu := menu.NewMenu()
+	timelineMenu.AddText("Rename clip", keys.CmdOrCtrl("r"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_OPEN_RENAME_CLIP_MODAL)
+	})
+
+	appMenu := a.AppMenu()
+	appMenu.Items = append(appMenu.Items, &menu.MenuItem{
+		Label:   "Timeline",
+		SubMenu: timelineMenu,
+	})
+	runtime.MenuSetApplicationMenu(a.ctx, appMenu)
+	runtime.MenuUpdateApplicationMenu(a.ctx)
 }
 
 // GaharaSetup: setup of gahara on startup (workspace and config.json)

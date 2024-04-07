@@ -198,6 +198,15 @@ function createTracksStore() {
     updateTrackDuration((tDuration) => (tDuration -= durationRemoved));
   };
 
+  const renameClipInTrack = (id: number, pos: number, name: string) => {
+    update((tracks) => {
+      if (!tracks[id]) return tracks;
+      if (pos < 0 || pos > tracks[0].length) return tracks;
+      tracks[id][pos].name = name;
+      return tracks;
+    });
+  };
+
   const resetTrackStore = () => {
     set([]);
     setTrackTime(0);
@@ -212,6 +221,7 @@ function createTracksStore() {
     removeVideoFromTrack,
     removeAndAddIntervalToTrack,
     removeRIDReferencesFromTrack,
+    renameClipInTrack,
     trackDuration,
     resetTrackStore,
   };
@@ -274,10 +284,12 @@ function createVideoToolingStore() {
   const videoNodePos = writable<number>(0);
   const videoNodeWidth = writable<number>(1);
   const videoNodeLeft = writable<number>(0);
+  const videoNodeName = writable<string>("");
   const { set: setVideoNode } = videoNode;
   const { set: setVideoNodePos } = videoNodePos;
   const { set: setVideoNodeWidth } = videoNodeWidth;
   const { set: setVideoNodeLeft } = videoNodeLeft;
+  const { set: setVideoNodeName } = videoNodeName;
 
   // Cut and range box operations
   const cutStart = writable<number>(0.0);
@@ -314,6 +326,7 @@ function createVideoToolingStore() {
     setBoxRightBound(0);
     setPlayheadPos(0);
     movePlayhead(false);
+    setVideoNodeName("");
     setEditMode("select");
   }
 
@@ -325,6 +338,8 @@ function createVideoToolingStore() {
     setCutEnd,
     videoNode,
     setVideoNode,
+    videoNodeName,
+    setVideoNodeName,
     videoNodePos,
     setVideoNodePos,
     videoNodeWidth,
