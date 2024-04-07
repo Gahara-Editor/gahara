@@ -5,6 +5,8 @@ import {main} from '../models';
 
 export function CreateProjectWorkspace(arg1:string):Promise<string>;
 
+export function DeleteProject(arg1:string):Promise<void>;
+
 export function DeleteProjectFile(arg1:string):Promise<void>;
 
 export function DeleteRIDReferences(arg1:string):Promise<void>;

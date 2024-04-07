@@ -28,14 +28,35 @@ function createRouterStore() {
 }
 
 function createMainMenuStore() {
+  const projects = writable<string[]>([]);
   const carouselIdx = writable<number>(0);
+
+  const { set: setProjects, update: updateProjects } = projects;
   const { set: setCarouselIdx, update: updateCarouselIdx } = carouselIdx;
+
+  function removeProject(projectName: string) {
+    updateProjects((projects) =>
+      projects.filter((project) => project !== projectName),
+    );
+  }
+
+  function addProject(projectName: string) {
+    updateProjects((projects) => {
+      projects = [...projects, projectName];
+      return projects;
+    });
+  }
 
   function resetMainMenuStore() {
     setCarouselIdx(0);
+    setProjects([]);
   }
 
   return {
+    projects,
+    setProjects,
+    addProject,
+    removeProject,
     carouselIdx,
     setCarouselIdx,
     updateCarouselIdx,

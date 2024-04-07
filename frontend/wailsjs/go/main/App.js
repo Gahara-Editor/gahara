@@ -6,6 +6,10 @@ export function CreateProjectWorkspace(arg1) {
   return window['go']['main']['App']['CreateProjectWorkspace'](arg1);
 }
 
+export function DeleteProject(arg1) {
+  return window['go']['main']['App']['DeleteProject'](arg1);
+}
+
 export function DeleteProjectFile(arg1) {
   return window['go']['main']['App']['DeleteProjectFile'](arg1);
 }

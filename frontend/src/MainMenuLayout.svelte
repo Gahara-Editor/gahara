@@ -15,12 +15,17 @@
   import { slide } from "svelte/transition";
 
   const { setRoute } = router;
-  const { carouselIdx, updateCarouselIdx, resetMainMenuStore } = mainMenuStore;
+  const {
+    projects,
+    carouselIdx,
+    setProjects,
+    updateCarouselIdx,
+    resetMainMenuStore,
+  } = mainMenuStore;
 
   let createProjectView: boolean;
   let loadProjectView: boolean;
   let mainMenuError: string = "";
-  let projects: string[];
 
   onMount(() => {
     loadProjects();
@@ -38,12 +43,12 @@
 
   function loadProjects() {
     ReadGaharaWorkspace()
-      .then((res) => (projects = res))
+      .then((res) => setProjects(res))
       .catch(console.log);
   }
 
   function handleNext() {
-    if ($carouselIdx < projects.length - 1) {
+    if ($carouselIdx < $projects.length - 1) {
       updateCarouselIdx((idx) => idx + 1);
     }
   }
@@ -131,7 +136,7 @@
   {/if}
   {#if loadProjectView}
     <div class="flex flex-col items-center justify-center">
-      {#if projects}
+      {#if $projects.length > 0}
         <div class="flex items-center justify-center gap-4">
           <button
             on:click={handlePrevious}
@@ -141,7 +146,7 @@
             <ArrowLeftIcon class="h-6 w-6" />
           </button>
           <div class="flex items-center justify-center p-2 gap-2">
-            {#each projects as project, idx (project)}
+            {#each $projects as project, idx (project)}
               <div animate:flip={{ duration: 400 }} in:slide>
                 {#if idx >= $carouselIdx && idx < $carouselIdx + 3}
                   <ProjectCard {project} {idx} />
@@ -151,8 +156,8 @@
           </div>
           <button
             on:click={handleNext}
-            disabled={$carouselIdx >= projects.length - 3}
-            class={$carouselIdx >= projects.length - 3
+            disabled={$carouselIdx >= $projects.length - 3}
+            class={$carouselIdx >= $projects.length - 3
               ? "text-gray-400"
               : "text-white"}
           >
