@@ -30,6 +30,8 @@ const (
 
 	// Epsilon: margin for floating point checks
 	Epsilon = 1e-6
+	// EVT_OPEN_RENAME_CLIP_MODAL: opens the rename clip modal
+	EVT_OPEN_RENAME_CLIP_MODAL = "evt_open_rename_clip_modal"
 	// EVT_INTERVAL_CUT: interval cut event
 	EVT_INTERVAL_CUT = "intervalCut"
 	// EVT_SLICE_CUT: slice cut event
@@ -134,11 +136,11 @@ func NewTimeline() Timeline {
 	return Timeline{VideoNodes: []VideoNode{}}
 }
 
-func createVideoNode(rid string, start, end float64) VideoNode {
+func createVideoNode(rid string, name string, start, end float64) VideoNode {
 	return VideoNode{
 		RID:   rid,
 		ID:    strings.Replace(uuid.New().String(), "-", "", -1),
-		Name:  "",
+		Name:  name,
 		Start: start,
 		End:   end,
 	}
@@ -150,10 +152,9 @@ func (tl *Timeline) Insert(rid string, start, end float64, pos int) (VideoNode, 
 		return videoNode, fmt.Errorf("insertion position is invalid")
 	}
 
-	videoNode = createVideoNode(rid, start, end)
+	videoNode = createVideoNode(rid, "Node", start, end)
 	tl.VideoNodes = append(tl.VideoNodes, videoNode)
 	return videoNode, nil
-
 }
 
 func (tl *Timeline) Delete(pos int) error {
@@ -161,6 +162,14 @@ func (tl *Timeline) Delete(pos int) error {
 		return fmt.Errorf("insertion position is invalid")
 	}
 	tl.VideoNodes = append(tl.VideoNodes[:pos], tl.VideoNodes[pos+1:]...)
+	return nil
+}
+
+func (tl *Timeline) RenameVideoNode(pos int, name string) error {
+	if pos < 0 || pos > len(tl.VideoNodes) {
+		return fmt.Errorf("clip position invalid")
+	}
+	tl.VideoNodes[pos].Name = name
 	return nil
 }
 
@@ -175,12 +184,12 @@ func (tl *Timeline) Split(eventType string, pos int, start, end float64) ([]Vide
 	switch eventType {
 	case EVT_SLICE_CUT:
 		if end > splitNode.Start && end+0.1 < splitNode.End {
-			nodes = append(nodes, createVideoNode(splitNode.RID, start, end), createVideoNode(splitNode.RID, end+0.1, splitNode.End))
+			nodes = append(nodes, createVideoNode(splitNode.RID, splitNode.Name, start, end), createVideoNode(splitNode.RID, splitNode.Name, end+0.1, splitNode.End))
 		}
 	case EVT_INTERVAL_CUT:
 		if start-0.1 > splitNode.Start && end+0.1 < splitNode.End {
-			nodes = append(nodes, createVideoNode(splitNode.RID, splitNode.Start, start-0.1), createVideoNode(splitNode.RID, start, end),
-				createVideoNode(splitNode.RID, end+0.1, splitNode.End))
+			nodes = append(nodes, createVideoNode(splitNode.RID, splitNode.Name, splitNode.Start, start-0.1), createVideoNode(splitNode.RID, splitNode.Name, start, end),
+				createVideoNode(splitNode.RID, splitNode.Name, end+0.1, splitNode.End))
 		}
 	}
 

@@ -40,8 +40,8 @@ func TestGetNameAndExtension(t *testing.T) {
 func TestDeleteRIDByReferences(t *testing.T) {
 	t.Run("delete references of a rid", func(t *testing.T) {
 		expected := &Timeline{
-			VideoNodes: []VideoNode{createVideoNode("2", 4.2, 6.9),
-				createVideoNode("3", 4.2, 6.9),
+			VideoNodes: []VideoNode{createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
 			},
 		}
 
@@ -63,6 +63,7 @@ func TestDeleteRIDByReferences(t *testing.T) {
 
 		for i := range tl.VideoNodes {
 			if tl.VideoNodes[i].RID != expected.VideoNodes[i].RID &&
+				tl.VideoNodes[i].Name != expected.VideoNodes[i].Name &&
 				math.Abs(tl.VideoNodes[i].Start-expected.VideoNodes[i].Start) <= 0.01 &&
 				math.Abs(tl.VideoNodes[i].End-expected.VideoNodes[i].End) <= 0.01 {
 				t.Errorf("the timelines do not have the same order")

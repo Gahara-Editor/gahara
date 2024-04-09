@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { createBooleanStore } from "../stores";
+  import { writable, type Writable } from "svelte/store";
+  import { EventsEmit } from "../../wailsjs/runtime/runtime";
 
-  const store = createBooleanStore(false);
-  const { isOpen, open, close } = store;
+  export let isOpen: Writable<boolean> = writable(false);
+  export let close: () => void = () => {};
 
   function keydown(e: KeyboardEvent) {
     e.stopPropagation();
-    if (e.key === "Escape") {
-      close();
-    }
+    if (e.key === "Escape") close();
+    if (e.key === "Enter") EventsEmit("evt_rename_clip");
   }
 
   function transitionEnd(e: TransitionEvent) {
@@ -39,11 +39,6 @@
   }
 </script>
 
-<slot name="trigger" {open}>
-  <!-- fallback -->
-  <button on:click={open}> Open </button>
-</slot>
-
 {#if $isOpen}
   <div
     id="modal"
@@ -69,10 +64,10 @@
       </slot>
 
       <div id="content" class="max-w-[50vh] overflow-hidden">
-        <slot name="content" {store} />
+        <slot name="content" />
       </div>
 
-      <slot name="footer" {store}>
+      <slot name="footer">
         <!-- fallback -->
         <div>
           <button
