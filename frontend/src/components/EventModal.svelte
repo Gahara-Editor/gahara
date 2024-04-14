@@ -1,13 +1,18 @@
 <script lang="ts">
   import { writable, type Writable } from "svelte/store";
   import { EventsEmit } from "../../wailsjs/runtime/runtime";
+  import { toolingStore } from "../stores";
 
+  const { setVimMode } = toolingStore;
   export let isOpen: Writable<boolean> = writable(false);
   export let close: () => void = () => {};
 
   function keydown(e: KeyboardEvent) {
     e.stopPropagation();
-    if (e.key === "Escape") close();
+    if (e.key === "Escape") {
+      setVimMode(true);
+      close();
+    }
     if (e.key === "Enter") EventsEmit("evt_rename_clip");
   }
 
@@ -28,7 +33,10 @@
     }
     node.addEventListener("keydown", keydown);
     node.addEventListener("transitionend", transitionEnd);
-    node.focus();
+
+    const input = node.querySelector("input");
+    if (input) input.focus();
+
     returnFn.push(() => {
       node.removeEventListener("keydown", keydown);
       node.removeEventListener("transitionend", transitionEnd);
@@ -45,7 +53,6 @@
     use:modalAction
     class="fixed top-0 left-0 min-h-screen w-full z-10 flex justify-center items-center opacity-100"
     tabindex={0}
-    autofocus
   >
     <div
       id="backdrop"

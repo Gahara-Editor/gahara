@@ -238,8 +238,76 @@ func (a *App) SetDefaultAppMenu() {
 // EnableVideoMenus: It enables the menus for the video layout view
 func (a *App) EnableVideoMenus() {
 	timelineMenu := menu.NewMenu()
+	timelineMenu.AddText("Open File", keys.CmdOrCtrl("o"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_UPLOAD_FILE)
+	})
+
+	timelineMenu.AddText("Play Track", keys.Shift("space"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_PLAY_TRACK)
+	})
+	timelineMenu.AddText("Save Timeline", keys.CmdOrCtrl("s"), func(cd *menu.CallbackData) {
+		err := a.SaveTimeline()
+		if err != nil {
+			wruntime.LogError(a.ctx, "could not save timeline")
+		}
+		wruntime.EventsEmit(a.ctx, video.EVT_SAVED_TIMELINE, "-- SAVED --")
+	})
 	timelineMenu.AddText("Rename clip", keys.CmdOrCtrl("r"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_OPEN_RENAME_CLIP_MODAL)
+	})
+	timelineMenu.AddText("Toggle Vim Mode", keys.CmdOrCtrl("i"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_VIM_MODE)
+		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, 0)
+	})
+	vimCommandsMenu := timelineMenu.AddSubmenu("Vim Commands")
+	vimCommandsMenu.AddText("Normal Mode", keys.Key("i"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_VIM_MODE, "select")
+	})
+	vimCommandsMenu.AddText("Delete Mode", keys.Key("d"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_VIM_MODE, "remove")
+	})
+	vimCommandsMenu.AddText("Timeline Mode", keys.Key("t"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_VIM_MODE, "timeline")
+	})
+	vimCommandsMenu.AddText("Split clip", keys.Key("x"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_SPLITCLIP_EDIT)
+	})
+	vimCommandsMenu.AddText("Yank clip", keys.Key("y"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_YANK_CLIP)
+	})
+	vimCommandsMenu.AddText("Paste clip", keys.Key("p"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_INSERTCLIP_EDIT)
+	})
+	vimCommandsMenu.AddText("Execute Edit", keys.Key("enter"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_EXECUTE_EDIT)
+	})
+	vimCommandsMenu.AddText("Move Track Left", keys.Key("h"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, -1)
+	})
+	vimCommandsMenu.AddText("Move Track Right", keys.Key("l"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, 1)
+	})
+	vimCommandsMenu.AddText("Move to Beginning of Track", keys.Key("0"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, -len(a.Timeline.VideoNodes))
+	})
+	vimCommandsMenu.AddText("Move to End of Track", keys.Key("$"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, len(a.Timeline.VideoNodes))
+	})
+	vimCommandsMenu.AddText("Zoom In Timeline", keys.Shift("+"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_ZOOM_TIMELINE, "in")
+	})
+	vimCommandsMenu.AddText("Zoom Out Timeline", keys.Shift("-"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_ZOOM_TIMELINE, "out")
+	})
+	vimCommandsMenu.AddText("Save Timeline", keys.Shift("w"), func(cd *menu.CallbackData) {
+		err := a.SaveTimeline()
+		if err != nil {
+			wruntime.LogError(a.ctx, "could not save timeline")
+		}
+		wruntime.EventsEmit(a.ctx, video.EVT_SAVED_TIMELINE, "-- SAVED --")
+	})
+	vimCommandsMenu.AddText("Open Search List", keys.Key("/"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_OPEN_SEARCH_LIST)
 	})
 
 	appMenu := a.AppMenu()

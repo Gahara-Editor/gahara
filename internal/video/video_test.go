@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func mockTl() *Timeline {
+	return &Timeline{VideoNodes: []VideoNode{
+		createVideoNode("1", "Node", 4.2, 6.9),
+		createVideoNode("2", "Node", 4.2, 6.9),
+		createVideoNode("3", "Node", 4.2, 6.9),
+		createVideoNode("1", "Node", 4.2, 6.9),
+		createVideoNode("1", "Node", 4.2, 6.9)}}
+
+}
+
 func TestGetFilename(t *testing.T) {
 	t.Run("get filename", func(t *testing.T) {
 		got := GetFilename("../dir/dir/path/filename.txt")
@@ -37,6 +47,219 @@ func TestGetNameAndExtension(t *testing.T) {
 	})
 }
 
+func TestTimelineInsert(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		element  VideoNode
+		idx      int
+		tl       *Timeline
+		expected *Timeline
+	}{
+		{
+			name:    "Insert an element in the middle",
+			element: createVideoNode("middle", "Node", 4.2, 6.9),
+			tl:      mockTl(),
+			idx:     2,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("middle", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name:    "Insert an element at the beginning",
+			element: createVideoNode("first", "Node", 4.2, 6.9),
+			tl:      mockTl(),
+			idx:     0,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("first", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name: "Insert an element at the end",
+			tl:   mockTl(),
+			idx:  5,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("last", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name:    "Index out out bounds (slice size = 4, idx = -1)",
+			element: createVideoNode("fail", "Node", 4.2, 6.9),
+			tl:      mockTl(),
+			idx:     -1,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name:    "Index out out bounds (slice size = 4, idx = 10)",
+			element: createVideoNode("fail", "Node", 4.2, 6.9),
+			tl:      mockTl(),
+			idx:     6,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		_, err := tt.tl.Insert(tt.element.RID, tt.element.Name, tt.element.Start, tt.element.End, tt.idx)
+		if tt.idx < 0 || tt.idx > len(tt.tl.VideoNodes) {
+			if err == nil {
+				t.Errorf("index %d is out of bounds and it should have failed", tt.idx)
+			}
+			return
+		}
+
+		if err != nil {
+			t.Error("could not perform delete operation: ", err.Error())
+		}
+
+		if len(tt.tl.VideoNodes) != len(tt.expected.VideoNodes) {
+			t.Errorf("the timeline lenghts do not match: (expected: %d, got: %d)", len(tt.expected.VideoNodes), len(tt.tl.VideoNodes))
+		}
+
+		for i := range tt.tl.VideoNodes {
+			if tt.tl.VideoNodes[i].RID != tt.expected.VideoNodes[i].RID &&
+				tt.tl.VideoNodes[i].Name != tt.expected.VideoNodes[i].Name &&
+				math.Abs(tt.tl.VideoNodes[i].Start-tt.expected.VideoNodes[i].Start) <= 0.01 &&
+				math.Abs(tt.tl.VideoNodes[i].End-tt.expected.VideoNodes[i].End) <= 0.01 {
+				t.Errorf("the timelines do not have the same order")
+			}
+		}
+
+	}
+}
+
+func TestTimelineDelete(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		idx      int
+		tl       *Timeline
+		expected *Timeline
+	}{
+		{
+			name: "Delete an element in the middle",
+			tl:   mockTl(),
+			idx:  2,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name: "Delete the first element",
+			tl:   mockTl(),
+			idx:  0,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name: "Delete the last element",
+			tl:   mockTl(),
+			idx:  0,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name: "Index out out bounds (slice size = 4, idx = -1)",
+			tl:   mockTl(),
+			idx:  -1,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+		{
+			name: "Index out out bounds (slice size = 4, idx = 10)",
+			tl:   mockTl(),
+			idx:  10,
+			expected: &Timeline{VideoNodes: []VideoNode{
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("2", "Node", 4.2, 6.9),
+				createVideoNode("3", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+				createVideoNode("1", "Node", 4.2, 6.9),
+			},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		err := tt.tl.Delete(tt.idx)
+		if tt.idx < 0 || tt.idx > len(tt.tl.VideoNodes) {
+			if err == nil {
+				t.Errorf("index %d is out of bounds and it should have failed", tt.idx)
+			}
+			return
+		}
+
+		if err != nil {
+			t.Error("could not perform delete operation: ", err.Error())
+		}
+
+		if len(tt.tl.VideoNodes) != len(tt.expected.VideoNodes) {
+			t.Errorf("the timeline lenghts do not match: (expected: %d, got: %d)", len(tt.expected.VideoNodes), len(tt.tl.VideoNodes))
+		}
+
+		for i := range tt.tl.VideoNodes {
+			if tt.tl.VideoNodes[i].RID != tt.expected.VideoNodes[i].RID &&
+				tt.tl.VideoNodes[i].Name != tt.expected.VideoNodes[i].Name &&
+				math.Abs(tt.tl.VideoNodes[i].Start-tt.expected.VideoNodes[i].Start) <= 0.01 &&
+				math.Abs(tt.tl.VideoNodes[i].End-tt.expected.VideoNodes[i].End) <= 0.01 {
+				t.Errorf("the timelines do not have the same order")
+			}
+		}
+
+	}
+}
+
 func TestDeleteRIDByReferences(t *testing.T) {
 	t.Run("delete references of a rid", func(t *testing.T) {
 		expected := &Timeline{
@@ -45,12 +268,12 @@ func TestDeleteRIDByReferences(t *testing.T) {
 			},
 		}
 
-		tl := NewTimeline()
-		_, _ = tl.Insert("1", 4.2, 6.9, 0)
-		_, _ = tl.Insert("2", 4.2, 6.9, 1)
-		_, _ = tl.Insert("3", 4.2, 6.9, 2)
-		_, _ = tl.Insert("1", 4.2, 6.9, 3)
-		_, _ = tl.Insert("1", 4.2, 6.9, 4)
+		tl := &Timeline{VideoNodes: []VideoNode{
+			createVideoNode("1", "Node", 4.2, 6.9),
+			createVideoNode("2", "Node", 4.2, 6.9),
+			createVideoNode("3", "Node", 4.2, 6.9),
+			createVideoNode("1", "Node", 4.2, 6.9),
+			createVideoNode("1", "Node", 4.2, 6.9)}}
 
 		err := tl.DeleteRIDReferences("1")
 		if err != nil {
@@ -58,7 +281,7 @@ func TestDeleteRIDByReferences(t *testing.T) {
 		}
 
 		if len(tl.VideoNodes) != len(expected.VideoNodes) {
-			t.Errorf("the timeline lenghts do not match")
+			t.Errorf("the timeline lenghts do not match: (expected: %d, got: %d)", len(expected.VideoNodes), len(tl.VideoNodes))
 		}
 
 		for i := range tl.VideoNodes {

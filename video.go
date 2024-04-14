@@ -69,7 +69,7 @@ func (a *App) createProxyFile(inputFilePath string) {
 
 		wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file created: %s", fileName))
 		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_FILE_CREATED,
-			Video{Name: name, FilePath: a.config.ProjectDir, Extension: filepath.Ext(fileName)})
+			Video{Name: name, FilePath: a.config.ProjectDir, Extension: filepath.Ext(proxyFile)})
 
 		// Once the proxy file is created, generate a thumbnail
 		err = a.GenerateThumbnail(pathProxyFile)
@@ -220,8 +220,8 @@ func (a *App) GetTimeline() video.Timeline {
 }
 
 // InsertInterval: inserts a video node with some interval [a,b]
-func (a *App) InsertInterval(rid string, start, end float64, pos int) (video.VideoNode, error) {
-	return a.Timeline.Insert(rid, start, end, pos)
+func (a *App) InsertInterval(rid string, name string, start, end float64, pos int) (video.VideoNode, error) {
+	return a.Timeline.Insert(rid, name, start, end, pos)
 }
 
 // RemoveInterval: removes a video node with some interval [a,b]

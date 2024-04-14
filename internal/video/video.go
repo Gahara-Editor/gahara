@@ -30,6 +30,30 @@ const (
 
 	// Epsilon: margin for floating point checks
 	Epsilon = 1e-6
+	// EVT_ENABLE_VIM_MODE
+	EVT_TOGGLE_VIM_MODE = "evt_toggle_vim_mode"
+	// EVT_CHANGE_VIM_MODE: sets the vim mode in timeline (select, remove, timeline)
+	EVT_CHANGE_VIM_MODE = "evt_change_vim_mode"
+	// EVT_SAVED_TIMELINE: triggers once the timeline has been saved
+	EVT_SAVED_TIMELINE = "evt_saved_timeline"
+	//EVT_ZOOM_TIMELINE: triggers a zoom for the timeline
+	EVT_ZOOM_TIMELINE = "evt_zoom_timeline"
+	// EVT_SPLITCLIP_EDIT: invokes the handleTwoCut function
+	EVT_SPLITCLIP_EDIT = "evt_splitclip_edit"
+	// EVT_INSERTCLIP_EDIT: triggers clip insertion (yank->paste or search list)
+	EVT_INSERTCLIP_EDIT = "evt_insertclip_edit"
+	// EVT_EXECUTE_EDIT: execute the current edit
+	EVT_EXECUTE_EDIT = "evt_execute_edit"
+	// EVT_PLAY_TRACK: plays the clips on the track (starting from current pos and clip time)
+	EVT_PLAY_TRACK = "evt_play_track"
+	//EVT_TRACK_MOVE: move vim cursor on the current track
+	EVT_TRACK_MOVE = "evt_track_move"
+	//EVT_UPLOAD_FILE: triggers the native upload file
+	EVT_UPLOAD_FILE = "evt_upload_file"
+	//EVT_OPEN_SEARCH_LIST: opens a search list containing all the uploaded files
+	EVT_OPEN_SEARCH_LIST = "evt_open_search_list"
+	//EVT_YANK_CLIP: copies the selected video node on track
+	EVT_YANK_CLIP = "evt_yank_clip"
 	// EVT_OPEN_RENAME_CLIP_MODAL: opens the rename clip modal
 	EVT_OPEN_RENAME_CLIP_MODAL = "evt_open_rename_clip_modal"
 	// EVT_INTERVAL_CUT: interval cut event
@@ -137,6 +161,9 @@ func NewTimeline() Timeline {
 }
 
 func createVideoNode(rid string, name string, start, end float64) VideoNode {
+	if name == "" {
+		name = "Node"
+	}
 	return VideoNode{
 		RID:   rid,
 		ID:    strings.Replace(uuid.New().String(), "-", "", -1),
@@ -146,28 +173,35 @@ func createVideoNode(rid string, name string, start, end float64) VideoNode {
 	}
 }
 
-func (tl *Timeline) Insert(rid string, start, end float64, pos int) (VideoNode, error) {
+func (tl *Timeline) Insert(rid string, name string, start, end float64, pos int) (VideoNode, error) {
 	var videoNode VideoNode
 	if pos < 0 || pos > len(tl.VideoNodes) {
-		return videoNode, fmt.Errorf("insertion position is invalid")
+		return videoNode, fmt.Errorf("insertion position %d is invalid", pos)
 	}
 
-	videoNode = createVideoNode(rid, "Node", start, end)
-	tl.VideoNodes = append(tl.VideoNodes, videoNode)
+	videoNode = createVideoNode(rid, name, start, end)
+	tl.VideoNodes = slices.Insert(tl.VideoNodes, pos, videoNode)
+
 	return videoNode, nil
 }
 
 func (tl *Timeline) Delete(pos int) error {
-	if pos < 0 || pos > len(tl.VideoNodes) {
-		return fmt.Errorf("insertion position is invalid")
+	if pos < 0 || pos >= len(tl.VideoNodes) {
+		return fmt.Errorf("delete position is invalid")
 	}
-	tl.VideoNodes = append(tl.VideoNodes[:pos], tl.VideoNodes[pos+1:]...)
+	if len(tl.VideoNodes) == 0 {
+		return fmt.Errorf("there are no video clips to delete in track")
+	}
+	tl.VideoNodes = slices.Delete(tl.VideoNodes, pos, pos+1)
 	return nil
 }
 
 func (tl *Timeline) RenameVideoNode(pos int, name string) error {
-	if pos < 0 || pos > len(tl.VideoNodes) {
+	if pos < 0 || pos >= len(tl.VideoNodes) {
 		return fmt.Errorf("clip position invalid")
+	}
+	if len(tl.VideoNodes) == 0 {
+		return fmt.Errorf("there are no video clips to rename in track")
 	}
 	tl.VideoNodes[pos].Name = name
 	return nil
@@ -175,8 +209,11 @@ func (tl *Timeline) RenameVideoNode(pos int, name string) error {
 
 func (tl *Timeline) Split(eventType string, pos int, start, end float64) ([]VideoNode, error) {
 	nodes := []VideoNode{}
-	if pos < 0 || pos > len(tl.VideoNodes) {
+	if pos < 0 || pos >= len(tl.VideoNodes) {
 		return nodes, fmt.Errorf("split position is invalid")
+	}
+	if len(tl.VideoNodes) == 0 {
+		return nodes, fmt.Errorf("there are no video clips to split in track")
 	}
 
 	splitNode := tl.VideoNodes[pos]

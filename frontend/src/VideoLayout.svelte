@@ -16,7 +16,13 @@
     ArrowSmDownIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
   import type { main } from "../wailsjs/go/models";
-  import { router, videoStore, videoFiles, trackStore } from "./stores";
+  import {
+    router,
+    videoStore,
+    videoFiles,
+    trackStore,
+    toolingStore,
+  } from "./stores";
   import { onDestroy, onMount } from "svelte";
   import Modal from "./components/Modal.svelte";
   import VideoPlayer from "./components/VideoPlayer.svelte";
@@ -32,8 +38,9 @@
   import FolderOpenIcon from "./icons/FolderOpenIcon.svelte";
   import TrashIcon from "./icons/TrashIcon.svelte";
   import WarningIcon from "./icons/WarningIcon.svelte";
+  import { formatSecondsToHMS } from "./lib/utils";
 
-  const { setVideoSrc, resetVideo } = videoStore;
+  const { resetVideo } = videoStore;
   const {
     addVideoToTrack,
     removeRIDReferencesFromTrack,
@@ -51,6 +58,7 @@
     resetVideoFiles,
   } = videoFiles;
   const { setRoute } = router;
+  const { actionMessage, setActionMsg } = toolingStore;
 
   onMount(() => {
     loadProjectFiles();
@@ -70,17 +78,16 @@
     LoadTimeline()
       .then((timeline) => {
         timeline.video_nodes.forEach((videoNode) => {
-          addVideoToTrack(0, videoNode);
+          addVideoToTrack(0, videoNode, -1, "append");
         });
-        setVideoSrc(timeline.video_nodes[0].rid);
       })
-      .catch(console.log);
+      .catch(() => setActionMsg("-- GAHARA --"));
   }
 
   function saveTimeline() {
     SaveTimeline()
-      .then(() => console.log("timeline was saved"))
-      .catch(() => console.log("could not save timeline"));
+      .then(() => setActionMsg("-- SAVED --"))
+      .catch(() => setActionMsg("Failed to save project"));
   }
 
   function selectFile() {
@@ -101,19 +108,6 @@
     }
   }
 
-  function formatSecondsToHMS(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-
-    const formattedHours = hours < 10 ? `0${hours}` : `${hours}`;
-    const formattedMinutes = minutes < 10 ? `0${minutes}` : `${minutes}`;
-    const formattedSeconds =
-      remainingSeconds < 10 ? `0${remainingSeconds}` : `${remainingSeconds}`;
-
-    return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-  }
-
   EventsOn("evt_proxy_file_created", (video: main.Video) => {
     setVideoFilesError("");
     addVideos([video]);
@@ -125,6 +119,9 @@
   EventsOn("evt_proxy_pipeline_msg", (msg: string) => {
     addPipelineMsg(msg);
   });
+  EventsOn("evt_upload_file", () => {
+    selectFile();
+  });
 
   onDestroy(() => {
     SetDefaultAppMenu();
@@ -132,6 +129,7 @@
       "evt_proxy_file_created",
       "evt_error_msg",
       "evt_proxy_pipeline_msg",
+      "evt_upload_file",
     );
   });
 </script>
@@ -206,7 +204,7 @@
         {/if}
       </div>
       {#if $videoFiles}
-        <div class="flex flex-col gap-2 max-h-screen overflow-y-auto">
+        <div class="flex flex-col gap-2 max-h-screen overflow-y-auto p-2">
           {#each $videoFiles as video (video.name)}
             <div
               use:draggable={video}
@@ -258,7 +256,7 @@
                 </div>
               </Modal>
 
-              <p class="text-sm">{video.name}</p>
+              <p class="text-sm truncate">{video.name}</p>
             </div>
           {/each}
           {#each $pipelineMessages as msg (msg)}
@@ -297,7 +295,14 @@
       <VideoPlayer />
     </div>
   </div>
-  <ToolingLayout />
+  <div class="flex justify-center items-center gap-2">
+    <ToolingLayout />
+    <div
+      class="border-2 border-white rounded-md px-4 py-3 min-w-[20vw] max-w-[20vw] truncate text-center font-semibold"
+    >
+      {$actionMessage}
+    </div>
+  </div>
   <div class="flex justify-center select-none">
     {formatSecondsToHMS($trackTime)}: {formatSecondsToHMS($trackDuration)}
   </div>

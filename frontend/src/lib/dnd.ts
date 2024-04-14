@@ -68,13 +68,24 @@ export function dropzone(node: HTMLDivElement, opts) {
     }${draggedVideo.value().extension}`;
 
     // TODO: handle insertions at an specific part of the timeline
-    InsertInterval(videoID, 0, videoStore.getDuration(), 0)
+    InsertInterval(
+      videoID,
+      draggedVideo.value().name,
+      0,
+      videoStore.getDuration(),
+      0,
+    )
       .then((tVideo) => {
         // TODO: add to different tracks dynamically for now 0
-        trackStore.addVideoToTrack(0, tVideo);
+        trackStore.addVideoToTrack(0, tVideo, 0);
         toolingStore.setVideoNode(tVideo);
+        videoStore.setCurrentTime(tVideo.start);
       })
-      .catch(console.log);
+      .catch(() =>
+        toolingStore.setActionMsg(
+          `could not insert ${draggedVideo.value().name}`,
+        ),
+      );
   }
 
   node.addEventListener("dragenter", handleDragEnter);

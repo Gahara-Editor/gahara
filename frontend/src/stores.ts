@@ -1,4 +1,4 @@
-import { get, writable } from "svelte/store";
+import { derived, get, writable } from "svelte/store";
 import type { main, video } from "../wailsjs/go/models";
 
 export function createBooleanStore(initial: boolean) {
@@ -72,27 +72,34 @@ function createFilesytemStore() {
   const { set: setVideoFilesError } = videoFilesError;
   const { set: setPipelineMsgs, update: updatePipelineMsgs } = pipelineMessages;
 
-  const addPipelineMsg = (msg: string) => {
+  function addPipelineMsg(msg: string) {
     updatePipelineMsgs((msgs) => (msgs = [...msgs, msg]));
-  };
+  }
 
-  const removePipelineMsg = () => {
+  function removePipelineMsg() {
     updatePipelineMsgs((msgs) => (msgs = [...msgs.slice(1)]));
-  };
+  }
 
-  const addVideos = (videos: main.Video[]) => {
+  function addVideos(videos: main.Video[]) {
     // TODO: handle duplicated keys
     update((projectFiles) => (projectFiles = [...projectFiles, ...videos]));
-  };
+  }
 
-  const removeVideoFile = (fileName: string) => {
+  function removeVideoFile(fileName: string) {
     update(
       (projectFiles) =>
         (projectFiles = projectFiles.filter(
           (video) => video.name !== fileName,
         )),
     );
-  };
+  }
+
+  function searchFiles(query: string): main.Video[] {
+    query = query.toLowerCase();
+    return get(videoFiles).filter((video) => {
+      return video.name.toLowerCase().includes(query);
+    });
+  }
 
   const resetVideoFiles = () => {
     set([]);
@@ -109,6 +116,7 @@ function createFilesytemStore() {
     addPipelineMsg,
     removePipelineMsg,
     removeVideoFile,
+    searchFiles,
     resetVideoFiles,
   };
 }
@@ -140,18 +148,28 @@ function createTracksStore() {
   const tracks = writable<video.VideoNode[][]>([]);
   const trackTime = writable<number>(0.0);
   const trackDuration = writable<number>(0.0);
-
   const { subscribe, set, update } = tracks;
   const { set: setTrackDuration, update: updateTrackDuration } = trackDuration;
   const { set: setTrackTime } = trackTime;
 
-  const addVideoToTrack = (id: number, video: video.VideoNode) => {
+  const addVideoToTrack = (
+    id: number,
+    video: video.VideoNode,
+    pos: number,
+    mode: string = "none",
+  ) => {
     // TODO: handle duplicated keys
     update((tracks) => {
       if (tracks.length === 0 || id > tracks.length) {
         tracks.push([video]);
       } else if (id >= 0 && id < tracks.length) {
-        tracks[id] = [...tracks[id], video];
+        if (mode === "append" || tracks[id].length === 0)
+          tracks[id] = [...tracks[id], video];
+        else {
+          if (pos >= 0 && pos < tracks[id].length) {
+            tracks[id].splice(pos, 0, video);
+          }
+        }
       }
       return tracks;
     });
@@ -234,13 +252,15 @@ function createVideoStore() {
   const volume = writable<number>(0.5);
   const paused = writable<boolean>(true);
   const ended = writable<boolean>(false);
+  const playbackRate = writable<number>(1);
 
   const { set: setDuration } = duration;
-  const { set: setCurrentTime } = currentTime;
+  const { set: setCurrentTime, update: updateCurrenTime } = currentTime;
   const { set: setVolume } = volume;
   const { set: setVideoSrc } = source;
   const { set: setPaused } = paused;
   const { set: setEnded } = ended;
+  const { set: setPlaybackRate, update: updatePlaybackRate } = playbackRate;
 
   function viewVideo(video: main.Video) {
     setVideoSrc(`${video.filepath}/${video.name}${video.extension}`);
@@ -250,7 +270,20 @@ function createVideoStore() {
     return get(duration);
   }
 
+  function handlePlaybackRate(dir: string) {
+    switch (dir) {
+      case "down":
+        if (get(playbackRate) / 2 < 0.5) return;
+        updatePlaybackRate((playbackRate) => playbackRate / 2);
+        break;
+      default:
+        if (get(playbackRate) * 2 > 2) return;
+        updatePlaybackRate((playbackRate) => playbackRate * 2);
+    }
+  }
+
   function resetVideo() {
+    setPlaybackRate(1);
     setDuration(0);
     setCurrentTime(0.0);
     setVolume(0.5);
@@ -261,23 +294,49 @@ function createVideoStore() {
 
   return {
     source,
+    playbackRate,
+    handlePlaybackRate,
     duration,
     getDuration,
     currentTime,
     paused,
     ended,
     viewVideo,
+    setPlaybackRate,
     setVideoSrc,
     setDuration,
     setCurrentTime,
+    updateCurrenTime,
     setVolume,
     resetVideo,
   };
 }
 
 function createVideoToolingStore() {
+  const numberOfClipsInTrack = derived(trackStore, ($trackStore) => {
+    if ($trackStore[0]) return $trackStore[0].length;
+    return 0;
+  });
+
+  // Messages
+  const actionMessage = writable<string>("-- GAHARA --");
+  const { set: setActionMsg } = actionMessage;
+
+  // Modals
+  const isOpenSearchList = writable<boolean>(false);
+  const { set: setIsOpenSearchList } = isOpenSearchList;
+
+  // Vim states
+  const clipCursorIdx = writable<number>(0);
+  const clipRegister = writable<video.VideoNode>(null);
+  const { set: setClipCursorIdx, update: updateClipCursorIdx } = clipCursorIdx;
+  const { set: setClipRegister } = clipRegister;
+
   // Edit modes
   const editMode = writable<string>("select");
+  const vimMode = writable<boolean>(false);
+  const { set: setVimMode, update: updateVimMode } = vimMode;
+  const { set: setEditMode } = editMode;
 
   // Selected video information
   const videoNode = writable<video.VideoNode>(null);
@@ -301,20 +360,51 @@ function createVideoToolingStore() {
   const boxRightBound = writable<number>(0);
   const { set: setCutStart } = cutStart;
   const { set: setCutEnd } = cutEnd;
-  const { set: setEditMode } = editMode;
   const { set: setClipStart } = clipStart;
   const { set: setClipEnd } = clipEnd;
   const { set: moveCutRangeBox } = isMovingCutRangeBox;
   const { set: setBoxLeftBound } = boxLeftBound;
   const { set: setBoxRightBound } = boxRightBound;
 
-  // Playhead
+  // Playback
   const playheadPos = writable<number>(0.0);
   const isMovingPlayhead = writable<boolean>(false);
+  const isTrackPlaying = writable<boolean>(false);
+  const trackZoom = writable<number>(20);
   const { set: movePlayhead } = isMovingPlayhead;
   const { set: setPlayheadPos, update: updatePlayheadPos } = playheadPos;
+  const { set: setIsTrackPlaying, update: updateIsTrackPlaying } =
+    isTrackPlaying;
+  const { set: setTrackZoom, update: updateTrackZoom } = trackZoom;
+
+  function moveClipCursor(inc: number) {
+    if (!get(vimMode)) return;
+    const numClips = get(numberOfClipsInTrack);
+    updateClipCursorIdx((cursorIdx) => {
+      if (cursorIdx + inc >= numClips) return numClips - 1;
+      if (cursorIdx + inc < 0) return 0;
+      return cursorIdx + inc;
+    });
+  }
+  function adjustTrackZoom(dir: string) {
+    switch (dir) {
+      case "in":
+        if (get(trackZoom) * 2 > 40) return;
+        updateTrackZoom((trackZoom) => trackZoom * 2);
+        break;
+
+      default:
+        if (get(trackZoom) / 2 < 5) return;
+        updateTrackZoom((trackZoom) => trackZoom / 2);
+    }
+  }
 
   function resetToolingStore() {
+    setActionMsg("-- GAHARA --");
+    setIsOpenSearchList(false);
+    setVimMode(false);
+    setClipCursorIdx(0);
+    setClipRegister(null);
     setVideoNode(null);
     setVideoNodePos(0);
     setCutStart(0.0);
@@ -325,13 +415,27 @@ function createVideoToolingStore() {
     setBoxLeftBound(0);
     setBoxRightBound(0);
     setPlayheadPos(0);
+    setIsTrackPlaying(false);
     movePlayhead(false);
     setVideoNodeName("");
     setEditMode("select");
   }
 
   return {
+    actionMessage,
+    setActionMsg,
+    isOpenSearchList,
+    setIsOpenSearchList,
+    vimMode,
+    setVimMode,
+    updateVimMode,
+    clipCursorIdx,
+    setClipCursorIdx,
+    moveClipCursor,
+    clipRegister,
+    setClipRegister,
     editMode,
+    setEditMode,
     cutStart,
     setCutStart,
     cutEnd,
@@ -356,6 +460,12 @@ function createVideoToolingStore() {
     setBoxRightBound,
     movePlayhead,
     playheadPos,
+    isTrackPlaying,
+    setIsTrackPlaying,
+    updateIsTrackPlaying,
+    trackZoom,
+    adjustTrackZoom,
+    setTrackZoom,
     setPlayheadPos,
     updatePlayheadPos,
     isMovingPlayhead,
@@ -464,6 +574,7 @@ function createExportOptionsStore() {
 
   return {
     filename,
+    setFilename,
     resolution,
     resolutionOpts,
     codec,

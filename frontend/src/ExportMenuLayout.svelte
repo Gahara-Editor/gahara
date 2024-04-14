@@ -1,8 +1,8 @@
 <script lang="ts">
   import { ChevronDownIcon } from "@rgossiaux/svelte-heroicons/solid";
   import { ExportVideo, GetOutputFileSavePath } from "../wailsjs/go/main/App";
-  import { exportOptionsStore, router } from "./stores";
-  import { onDestroy } from "svelte";
+  import { exportOptionsStore, router, projectName } from "./stores";
+  import { onDestroy, onMount } from "svelte";
   import FolderOpenIcon from "./icons/FolderOpenIcon.svelte";
   import { EventsOff, EventsOn } from "../wailsjs/runtime/runtime";
 
@@ -21,6 +21,7 @@
     isProcessingVid,
     processingMsg,
     progressPercentage,
+    setFilename,
     getCompatibleCodecs,
     setProgressPercentage,
     setProcessingMsg,
@@ -29,6 +30,10 @@
     setOutputPath,
     resetExportOptionsStore,
   } = exportOptionsStore;
+
+  onMount(() => {
+    if ($projectName) setFilename($projectName.replace(/\s+/g, ""));
+  });
 
   $: {
     switch ($videoFormat) {
