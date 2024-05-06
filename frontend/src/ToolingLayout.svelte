@@ -10,8 +10,22 @@
   import TrashIcon from "./icons/TrashIcon.svelte";
   import SliceIntervalIcon from "./icons/SliceIntervalIcon.svelte";
   import BoxIntevalIcon from "./icons/BoxIntevalIcon.svelte";
+  import { EventsEmit, EventsOff, EventsOn } from "../wailsjs/runtime/runtime";
+  import { onDestroy } from "svelte";
+  import VimIcon from "./icons/VimIcon.svelte";
 
-  const { editMode, cutStart, cutEnd, videoNodePos, videoNode } = toolingStore;
+  const {
+    vimMode,
+    updateVimMode,
+    editMode,
+    cutStart,
+    cutEnd,
+    videoNodePos,
+    videoNode,
+    setEditMode,
+    setClipRegister,
+    setActionMsg,
+  } = toolingStore;
   const { removeVideoFromTrack, removeAndAddIntervalToTrack } = trackStore;
 
   let executeEdit = false;
@@ -20,55 +34,85 @@
     executeEdit = $editMode !== "select" ? true : false;
   }
 
-  function setEditMode(mode: string) {
-    editMode.set(mode);
-  }
-
   function handleTwoCut() {
     if ($editMode === "timeline" && $videoNode) {
       SplitInterval("evt_slice_cut", $videoNodePos, $videoNode.start, $cutEnd)
         .then((nodes) => {
           if (nodes.length > 0) {
             removeAndAddIntervalToTrack(0, $videoNodePos, nodes);
+            setTimeout(() => {
+              EventsEmit("evt_track_move", 1);
+            }, 120);
           }
         })
-        .catch(console.log);
+        .catch(() => setActionMsg(`could not cut ${$videoNode.name}`));
     }
   }
 
   function handleEditAction() {
-    switch ($editMode) {
-      case "intervalCut":
-        if ($videoNode) {
+    if ($videoNode) {
+      switch ($editMode) {
+        case "intervalCut":
           SplitInterval("intervalCut", $videoNodePos, $cutStart, $cutEnd)
             .then((nodes) => {
               removeAndAddIntervalToTrack(0, $videoNodePos, nodes);
+              setTimeout(() => {
+                EventsEmit("evt_track_move", 1);
+              }, 120);
             })
-            .catch(console.log);
-        }
-        setEditMode("select");
-        break;
-      case "remove":
-        if ($videoNode) {
+            .catch(() => setActionMsg(`could not cut ${$videoNode.name}`));
+          break;
+        case "remove":
+          setClipRegister($videoNode);
           RemoveInterval($videoNodePos)
             .then(() => {
               removeVideoFromTrack(0, $videoNode);
+              // timeout to catch up UI shifting on first element
+              if ($videoNodePos === 0) {
+                setTimeout(() => {
+                  EventsEmit("evt_track_move", 0);
+                }, 120);
+              } else EventsEmit("evt_track_move", -1);
             })
-            .catch(console.log);
-        }
-        setEditMode("select");
-        break;
-      default:
+            .catch(() => setActionMsg(`could not delete ${$videoNode.name}`));
+          break;
+      }
     }
+    setEditMode("select");
+    setActionMsg("-- SELECT --");
   }
+
+  EventsOn("evt_toggle_vim_mode", () => {
+    updateVimMode((mode) => !mode);
+    if ($vimMode) setActionMsg("-- SELECT --");
+    else setActionMsg("-- GAHARA --");
+  });
+
+  EventsOn("evt_change_vim_mode", (mode: string) => {
+    setEditMode(mode);
+    setActionMsg(`-- ${mode.toUpperCase()} --`);
+  });
+  EventsOn("evt_splitclip_edit", () => {
+    handleTwoCut();
+  });
+  EventsOn("evt_execute_edit", () => {
+    if ($vimMode) handleEditAction();
+  });
+  onDestroy(() => {
+    EventsOff(
+      "evt_toggle_vim_mode",
+      "evt_change_vim_mode",
+      "evt_splitclip_edit",
+      "evt_execute_edit",
+    );
+  });
 </script>
 
-<div class="w-full flex items-center p-2 justify-center">
-  <div
-    id="video-tooling"
-    class="flex items-center justify-center bg-gblue0 rounded-md border-white border-2 p-2 gap-2"
-  >
-    {#if executeEdit && $editMode !== "timeline"}
+<div class="flex items-center p-2 justify-center gap-2">
+  {#if executeEdit && $editMode !== "timeline"}
+    <div
+      class="flex items-center justify-center bg-gblue0 rounded-md border-white border-2 p-2 gap-2"
+    >
       <button
         class="bg-ggreen px-2 py-1 rounded-md flex items-center border-2 border-white"
         on:click={() => handleEditAction()}
@@ -81,7 +125,19 @@
       >
         <XIcon class="h-5 w-5" />
       </button>
-    {/if}
+    </div>
+  {/if}
+
+  <div
+    id="video-tooling"
+    class="flex items-center justify-center bg-gblue0 rounded-md border-white border-2 p-2 gap-2"
+  >
+    <button
+      class="bg-gdark px-2 py-1 rounded-md flex items-center gap-1 border-2 border-white"
+      on:click={() => updateVimMode((mode) => !mode)}
+    >
+      <VimIcon class={$vimMode ? "h-5 w-5 text-teal" : "h-5 w-5"} />
+    </button>
     <button
       class="bg-gdark px-2 py-1 rounded-md flex items-center gap-1 border-2 border-white"
       style={$editMode === "select"

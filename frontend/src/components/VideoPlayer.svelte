@@ -3,7 +3,6 @@
     PlayIcon,
     PauseIcon,
     StopIcon,
-    DesktopComputerIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
   import SpeakerIcon from "../icons/SpeakerIcon.svelte";
   import MutedIcon from "../icons/MutedIcon.svelte";
@@ -11,40 +10,40 @@
   import { videoStore, toolingStore } from "../stores";
   import ForwardIcon from "../icons/ForwardIcon.svelte";
   import BackwardIcon from "../icons/BackwardIcon.svelte";
+  import {
+    EventsEmit,
+    EventsOff,
+    EventsOn,
+  } from "../../wailsjs/runtime/runtime";
 
-  const { videoNode } = toolingStore;
-
-  let playbackRate: number;
   let volume: number;
   let muted: boolean;
-  let seeking: boolean;
-  let buffered: TimeRanges;
-  let played: TimeRanges;
-  let seekable: TimeRanges;
   let videoWidth: number;
   let videoHeight: number;
-
   let videoContainer: HTMLElement;
-  let video: HTMLVideoElement;
-  let videoSrc: string;
+  let video: HTMLVideoElement | null = null;
 
-  let { source, duration, currentTime, paused, ended } = videoStore;
-  let { editMode, cutStart, cutEnd } = toolingStore;
+  let {
+    source,
+    duration,
+    currentTime,
+    paused,
+    ended,
+    playbackRate,
+    handlePlaybackRate,
+    setCurrentTime,
+    resetVideo,
+  } = videoStore;
+  let { videoNode, editMode, cutEnd, isTrackPlaying, setIsTrackPlaying } =
+    toolingStore;
 
   onMount(() => {
-    videoSrc = $source;
     setVideoPlayerDefaults();
   });
 
   $: muted = volume <= 0;
   $: {
-    if (videoSrc !== $source) {
-      videoSrc = $source;
-      setVideoPlayerDefaults();
-    }
-  }
-  $: {
-    if ($editMode === "cut") {
+    if ($editMode === "intervalCut") {
       if ($currentTime >= $cutEnd) {
         video.pause();
       }
@@ -52,7 +51,6 @@
   }
 
   function setVideoPlayerDefaults() {
-    playbackRate = 1;
     volume = 0.5;
     paused.set(true);
     ended.set(false);
@@ -60,14 +58,13 @@
   }
 
   function handlePlayPause() {
-    if ($editMode === "cut") {
-      currentTime.set($cutStart);
-    }
-
-    if ($paused || $ended) {
-      video.play();
-    } else {
-      video.pause();
+    if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      if ($paused || $ended) {
+        video.play();
+      } else {
+        video.pause();
+      }
+      setIsTrackPlaying($paused);
     }
   }
 
@@ -80,29 +77,23 @@
     muted = !muted;
   }
 
-  function handlePlaybackRate(dir: string) {
-    switch (dir) {
-      case "down":
-        playbackRate =
-          playbackRate / 2 > 0.125 ? playbackRate / 2 : playbackRate;
-        break;
-      default:
-        playbackRate = playbackRate * 2 < 8 ? playbackRate * 2 : playbackRate;
-    }
+  function handleTimeupdate() {
+    if ($videoNode && $currentTime >= $videoNode.end)
+      EventsEmit("evt_track_move", 1);
   }
 
-  function handleFullScreen() {
-    if (document.fullscreenElement !== null) {
-      document.exitFullscreen;
-      videoContainer.setAttribute("data-fullscreen", "false");
-    } else {
-      videoContainer.requestFullscreen();
-      videoContainer.setAttribute("data-fullscreen", "true");
-    }
+  function seekVideo() {
+    if ($videoNode) setCurrentTime($videoNode.start);
+    if ($isTrackPlaying) video.play();
   }
+
+  EventsOn("evt_play_track", () => {
+    handlePlayPause();
+  });
 
   onDestroy(() => {
-    videoSrc = "";
+    EventsOff("evt_play_track");
+    resetVideo();
   });
 </script>
 
@@ -111,26 +102,26 @@
   class="h-full w-full overflow-hidden bg-gblue0 p-4 flex flex-col rounded-md border-white border-2"
 >
   <div id="video-player" class="h-5/6">
-    {#if videoSrc}
+    {#if $source}
       <video
         id="video"
         class="block h-full w-full object-contain bg-gprimary
         rounded-md"
-        src={videoSrc}
+        src={$videoNode
+          ? $source + `#t=${$videoNode.start},${$videoNode.end}`
+          : $source}
         bind:this={video}
         bind:duration={$duration}
-        bind:buffered
-        bind:played
-        bind:seekable
-        bind:seeking
         bind:ended={$ended}
         bind:currentTime={$currentTime}
-        bind:playbackRate
+        bind:playbackRate={$playbackRate}
         bind:paused={$paused}
         bind:volume
         bind:muted
         bind:videoWidth
         bind:videoHeight
+        on:loadeddata={() => seekVideo()}
+        on:timeupdate={() => handleTimeupdate()}
       >
         <track kind="captions" />
       </video>
@@ -139,21 +130,16 @@
     {/if}
   </div>
   <!-- Video Controls -->
-  {#if videoSrc}
+  {#if $source}
+    {#if $videoNode}
+      <div class="text-center text-lg font-semibold">
+        {$videoNode.name}
+      </div>
+    {/if}
     <div
       id="video-controls"
       class="h-1/6 flex gap-2 items-center justify-center"
     >
-      <button id="playpause" type="button" on:click={() => handlePlayPause()}>
-        {#if $paused || $ended}
-          <PlayIcon class="h-8 w-8 text-white" />
-        {:else}
-          <PauseIcon class="h-8 w-8 text-white" />
-        {/if}
-      </button>
-      <button id="stop" type="button" on:click={() => handleStop()}>
-        <StopIcon class="h-8 w-8 text-white" />
-      </button>
       <button
         id="playbackrate"
         type="button"
@@ -162,12 +148,23 @@
         <BackwardIcon class="h-8 w-8 text-white" />
       </button>
 
+      <button id="playpause" type="button" on:click={() => handlePlayPause()}>
+        {#if $paused || $ended}
+          <PlayIcon class="h-8 w-8 text-white" />
+        {:else}
+          <PauseIcon class="h-8 w-8 text-white" />
+        {/if}
+      </button>
       <button
         id="playbackrate"
         type="button"
         on:click={() => handlePlaybackRate("up")}
       >
         <ForwardIcon class="h-8 w-8 text-white" />
+      </button>
+
+      <button id="stop" type="button" on:click={() => handleStop()}>
+        <StopIcon class="h-8 w-8 text-white" />
       </button>
 
       <button id="mute" type="button" on:click={() => handleMute()}>
@@ -187,11 +184,8 @@
           class="w-20 cursor-pointer [&::-webkit-slider-runnable-track]:bg-slate-300 [&::-webkit-slider-runnable-track]:rounded-xl"
         />
       </div>
-      <button id="fs" type="button" on:click={() => handleFullScreen()}>
-        <DesktopComputerIcon class="h-8 w-8 text-white" />
-      </button>
       <div class="px-2 rounded-md border-white border-2">
-        x{playbackRate}
+        x{$playbackRate}
       </div>
     </div>
   {/if}

@@ -2,6 +2,22 @@
 @tailwind base;
 @tailwind components;
 
+/* Chrome, Edge, and Safari */
+
+*::-webkit-scrollbar {
+  width: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #2a2e39;
+  border-radius: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #ffffff;
+  border-radius: 8px;
+}
+
 body {
   box-sizing: border-box;
   background-color: #1a1b26;

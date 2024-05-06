@@ -32,7 +32,7 @@ export function GetTimeline():Promise<video.Timeline>;
 
 export function GetTrackDuration():Promise<number>;
 
-export function InsertInterval(arg1:string,arg2:number,arg3:number,arg4:number):Promise<video.VideoNode>;
+export function InsertInterval(arg1:string,arg2:string,arg3:number,arg4:number,arg5:number):Promise<video.VideoNode>;
 
 export function LoadTimeline():Promise<video.Timeline>;
 
