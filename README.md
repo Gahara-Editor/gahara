@@ -1,7 +1,5 @@
-![Gahara Banner](./public/gaharabg.png)
-
 <div align="center">
-  <br>
+  <p><img src="./public/GaharaGithubIcon.svg" width="144" alt="GaharaVideoEditorIcon"/></p>
   <h1>🎬 Gahara 🎬</h1>
   <strong>A simple video editor</strong>
   <br>
@@ -23,6 +21,7 @@ Gahara is a lightweight video editor app powered by the multimedia tool FFmpeg a
 - **Video concatenation:** merge multiple video clips together (Lossy)
 - **Video format conversion:** transform the current format to another during export (.mp4, .avi, .wmv, etc)
 - **Manage projects:** ability to create, and delete multiple video projects
+- **Vim inspired keybinds:** delete, yank, paste, reorder, and move through the project timeline with Vim keybinds
 - **Video clip labeling:** ability to rename video clips
 
 ## 📜 Requirements

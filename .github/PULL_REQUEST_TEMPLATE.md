@@ -7,7 +7,7 @@ This PR [adds/removes/fixes/replaces] the [feature/bug/etc].
 
 ## What type of PR is this? (check all applicable)
 
-- [ ] 🍕 Feature
+- [ ] 💡 Feature
 - [ ] 🐛 Bug Fix
 - [ ] 📝 Documentation Update
 - [ ] 🎨 Style
@@ -22,7 +22,7 @@ This PR [adds/removes/fixes/replaces] the [feature/bug/etc].
 ## Related Tickets & Documents
 
 <!--
-Please use this format link issue numbers: Fixes #123
+Please use this format link issue numbers: Fixes #123, Closes #123
 https://docs.github.com/en/free-pro-team@latest/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword
 -->
 
@@ -44,8 +44,6 @@ https://docs.github.com/en/free-pro-team@latest/github/managing-your-work-on-git
 ## [optional] Are there any post-deployment tasks to perform?
 
 ## [optional] What gif best describes this PR or how it makes you feel?
-
-<!-- note: PRs with deleted sections will be marked invalid -->
 
 <!--
   For Work In Progress Pull Requests, please use the Draft PR feature,
