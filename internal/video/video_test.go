@@ -295,3 +295,23 @@ func TestDeleteRIDByReferences(t *testing.T) {
 
 	})
 }
+
+func TestMarkLossless(t *testing.T) {
+	t.Run("mark clip as lossless", func(t *testing.T) {
+		timeline := &Timeline{VideoNodes: []VideoNode{
+			createVideoNode("1", "Node1", 4.2, 6.9),
+			createVideoNode("2", "Node2", 4.2, 6.9),
+			createVideoNode("3", "Node3", 4.2, 6.9),
+			createVideoNode("1", "Node4", 4.2, 6.9),
+			createVideoNode("1", "Node5", 4.2, 6.9)}}
+
+		err := timeline.ToggleLossless(1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if timeline.VideoNodes[1].LosslessExport != true {
+			t.Errorf("video clip was not marked as lossless")
+		}
+	})
+}

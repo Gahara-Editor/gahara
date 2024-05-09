@@ -26,8 +26,8 @@ export function EnableVideoMenus() {
   return window['go']['main']['App']['EnableVideoMenus']();
 }
 
-export function ExportVideo(arg1) {
-  return window['go']['main']['App']['ExportVideo'](arg1);
+export function FFmpegQuery(arg1, arg2) {
+  return window['go']['main']['App']['FFmpegQuery'](arg1, arg2);
 }
 
 export function FilePicker() {
@@ -66,6 +66,10 @@ export function LoadTimeline() {
   return window['go']['main']['App']['LoadTimeline']();
 }
 
+export function OpenFile(arg1) {
+  return window['go']['main']['App']['OpenFile'](arg1);
+}
+
 export function ReadGaharaWorkspace() {
   return window['go']['main']['App']['ReadGaharaWorkspace']();
 }
@@ -100,4 +104,8 @@ export function SetProjectDirectory(arg1) {
 
 export function SplitInterval(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SplitInterval'](arg1, arg2, arg3, arg4);
+}
+
+export function ToggleLossless(arg1) {
+  return window['go']['main']['App']['ToggleLossless'](arg1);
 }

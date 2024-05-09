@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"runtime"
+
 	"github.com/k1nho/gahara/internal/video"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -75,6 +77,26 @@ func (a *App) FilePicker() error {
 	go a.createProxyFile(filepath)
 	return nil
 
+}
+
+func (a *App) OpenFile(filepath string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", "/select", filepath)
+	case "darwin":
+		cmd = exec.Command("open", "-R", filepath)
+	case "linux":
+		cmd = exec.Command("xdg-open", filepath)
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to open file")
+	}
+	return nil
 }
 
 // createWorkspace: creates a workspace directory to store the video projects of a user locally
@@ -231,8 +253,8 @@ func (a *App) AppMenu(menuItems ...menu.MenuItem) *menu.Menu {
 
 // SetDefaultAppMenu: it sets the default menu
 func (a *App) SetDefaultAppMenu() {
-	runtime.MenuSetApplicationMenu(a.ctx, a.AppMenu())
-	runtime.MenuUpdateApplicationMenu(a.ctx)
+	wruntime.MenuSetApplicationMenu(a.ctx, a.AppMenu())
+	wruntime.MenuUpdateApplicationMenu(a.ctx)
 }
 
 // EnableVideoMenus: It enables the menus for the video layout view
@@ -252,8 +274,11 @@ func (a *App) EnableVideoMenus() {
 		}
 		wruntime.EventsEmit(a.ctx, video.EVT_SAVED_TIMELINE, "-- SAVED --")
 	})
-	timelineMenu.AddText("Rename clip", keys.CmdOrCtrl("r"), func(cd *menu.CallbackData) {
+	timelineMenu.AddText("Rename Clip", keys.CmdOrCtrl("r"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_OPEN_RENAME_CLIP_MODAL)
+	})
+	timelineMenu.AddText("Mark/Unmark Lossless Export", keys.Key("m"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_LOSSLESS)
 	})
 	timelineMenu.AddText("Toggle Vim Mode", keys.CmdOrCtrl("i"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_VIM_MODE)
@@ -315,8 +340,8 @@ func (a *App) EnableVideoMenus() {
 		Label:   "Timeline",
 		SubMenu: timelineMenu,
 	})
-	runtime.MenuSetApplicationMenu(a.ctx, appMenu)
-	runtime.MenuUpdateApplicationMenu(a.ctx)
+	wruntime.MenuSetApplicationMenu(a.ctx, appMenu)
+	wruntime.MenuUpdateApplicationMenu(a.ctx)
 }
 
 // GaharaSetup: setup of gahara on startup (workspace and config.json)

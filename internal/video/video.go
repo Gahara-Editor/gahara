@@ -3,7 +3,6 @@ package video
 import (
 	"fmt"
 	"os/exec"
-	"path"
 	"slices"
 	"strings"
 	"time"
@@ -27,9 +26,17 @@ func getCompatibleRest() []string {
 }
 
 const (
-
+	// high order query types
+	QUERY_FILTERGRAPH       = "q_filtergraph"
+	QUERY_LOSSLESS_CUT      = "q_lossless_cut"
+	QUERY_CREATE_PROXY_FILE = "q_create_proxy_file"
+	QUERY_CREATE_THUMBNAIL  = "q_create_thumbnail"
 	// Epsilon: margin for floating point checks
 	Epsilon = 1e-6
+	// EVT_FFMPEG_RESULT: signals the result of a FFmpeg query in the form of a VideoProcessingResult
+	EVT_FFMPEG_RESULT = "evt_ffmpeg_result"
+	// EVT_FFMPEG_EXEC_ENDED: signals that the ffmpeg query has ended (does not indicate success of the query)
+	EVT_FFMPEG_EXEC_ENDED = "evt_ffmpeg_exec_ended"
 	// EVT_ENABLE_VIM_MODE
 	EVT_TOGGLE_VIM_MODE = "evt_toggle_vim_mode"
 	// EVT_CHANGE_VIM_MODE: sets the vim mode in timeline (select, remove, timeline)
@@ -42,6 +49,8 @@ const (
 	EVT_SPLITCLIP_EDIT = "evt_splitclip_edit"
 	// EVT_INSERTCLIP_EDIT: triggers clip insertion (yank->paste or search list)
 	EVT_INSERTCLIP_EDIT = "evt_insertclip_edit"
+	//EVT_TOGGLE_LOSSLESS: toggles the video node status to be exported as lossless
+	EVT_TOGGLE_LOSSLESS = "evt_toggle_lossless"
 	// EVT_EXECUTE_EDIT: execute the current edit
 	EVT_EXECUTE_EDIT = "evt_execute_edit"
 	// EVT_PLAY_TRACK: plays the clips on the track (starting from current pos and clip time)
@@ -62,6 +71,8 @@ const (
 	EVT_SLICE_CUT = "evt_slice_cut"
 	// EVT_ENCODING_PROGRESS: encoding progress event
 	EVT_ENCODING_PROGRESS = "evt_encoding_progress"
+	// EVT_EXPORT_MSG: message for exporting a video events
+	EVT_EXPORT_MSG = "evt_export_msg"
 	// EVT_PIPELINE_MSG: proxy pipeline message event
 	EVT_PROXY_PIPELINE_MSG = "evt_proxy_pipeline_msg"
 	//EVT_PROXY_ERROR_MSG: error ocurred while creating proxy file
@@ -125,6 +136,8 @@ type VideoNode struct {
 	ID string `json:"id"`
 	// Name: the name given by the user to the clip
 	Name string `json:"name"`
+	// Lossless
+	LosslessExport bool `json:"losslessexport"`
 }
 
 type Timeline struct {
@@ -148,6 +161,8 @@ type ProcessingOpts struct {
 	CRF string `json:"crf"`
 	// Preset: Encoding speed to compression ratio
 	Preset string `json:"preset"`
+	// InputPath: The file path of the input video
+	InputPath string `json:"input_path,omitempty"`
 	// OutputPath: The file path of the output video
 	OutputPath string `json:"output_path"`
 	// Filename: the name of the file
@@ -207,6 +222,17 @@ func (tl *Timeline) RenameVideoNode(pos int, name string) error {
 	return nil
 }
 
+func (tl *Timeline) ToggleLossless(pos int) error {
+	if pos < 0 || pos >= len(tl.VideoNodes) {
+		return fmt.Errorf("clip position invalid %d", pos)
+	}
+	if len(tl.VideoNodes) == 0 {
+		return fmt.Errorf("there are no video clips to mark")
+	}
+	tl.VideoNodes[pos].LosslessExport = !tl.VideoNodes[pos].LosslessExport
+	return nil
+}
+
 func (tl *Timeline) Split(eventType string, pos int, start, end float64) ([]VideoNode, error) {
 	nodes := []VideoNode{}
 	if pos < 0 || pos >= len(tl.VideoNodes) {
@@ -245,60 +271,6 @@ func (tl *Timeline) DeleteRIDReferences(rid string) error {
 		return vn.RID == rid
 	})
 	return nil
-}
-
-func (tl *Timeline) MergeClipsQuery(opts *ProcessingOpts) (string, error) {
-	if tl.VideoNodes == nil || len(tl.VideoNodes) == 0 {
-		return "", fmt.Errorf("no timeline exists")
-	}
-
-	var query strings.Builder
-	var pos int
-	ridToPos := map[string]int{}
-
-	query.WriteString(" -filter_complex \"")
-	for i, videoNode := range tl.VideoNodes {
-		if pos, ok := ridToPos[videoNode.RID]; ok {
-			query.WriteString(fmt.Sprintf("[%d:v]trim=start=%f:end=%f,setpts=PTS-STARTPTS,scale=%s[v%d];", pos, videoNode.Start, videoNode.End, opts.Resolution, i))
-			continue
-		}
-		ridToPos[videoNode.RID] = pos
-		query.WriteString(fmt.Sprintf("[%d:v]trim=start=%f:end=%f,setpts=PTS-STARTPTS,scale=%s[v%d];", pos, videoNode.Start, videoNode.End, opts.Resolution, i))
-		pos += 1
-	}
-
-	for i := range tl.VideoNodes {
-		query.WriteString(fmt.Sprintf("[v%d]", i))
-	}
-
-	query.WriteString(fmt.Sprintf("concat=n=%d:v=1:a=0[out]\" -map \"[out]\"", len(tl.VideoNodes)))
-	return query.String(), nil
-}
-
-func (tl *Timeline) InputArgs() (string, error) {
-	if tl.VideoNodes == nil || len(tl.VideoNodes) == 0 {
-		return "", fmt.Errorf("no timeline exists")
-	}
-	var pos int
-	var query strings.Builder
-	inputToPos := map[string]int{}
-	for _, videoNode := range tl.VideoNodes {
-		if _, ok := inputToPos[videoNode.RID]; ok {
-			continue
-		}
-		inputToPos[videoNode.RID] = pos
-		pos += 1
-		query.WriteString(fmt.Sprintf(" -i \"%s\"", videoNode.RID))
-	}
-	return query.String(), nil
-}
-
-func (tl *Timeline) OutputArgs(opts *ProcessingOpts) (string, error) {
-	if tl.VideoNodes == nil || len(tl.VideoNodes) == 0 {
-		return "", fmt.Errorf("no timeline exists")
-	}
-
-	return fmt.Sprintf(" -c:v %s -crf %s -preset %s %s", opts.Codec, opts.CRF, opts.Preset, GetFullOutputPath(opts)), nil
 }
 
 // CreateProxyFile: creates a copy file from the original to preserve original and work with the given video clip
@@ -368,31 +340,32 @@ func FormatTime(seconds float64) string {
 	return formattedTime
 }
 
-// GetFullOutputPath: gets the full export path of the video project
-func GetFullOutputPath(opts *ProcessingOpts) string {
-	return path.Join(opts.OutputPath, opts.Filename+opts.VideoFormat)
-}
-
-// ValidateProcessingOpts: validates the processing options of a video project
-func ValidateProcessingOpts(opts *ProcessingOpts) error {
-	if opts.Filename == "" {
-		return fmt.Errorf("filename must be provided")
+func (p *ProcessingOpts) ValidateRequiredFields(queryType string) error {
+	if p.OutputPath == "" {
+		return fmt.Errorf("output path was not provided")
 	}
-	if opts.OutputPath == "" {
-		return fmt.Errorf("export path was not selected")
+	if p.Filename == "" {
+		return fmt.Errorf("filename was not provided")
 	}
-
-	if opts.Codec == "" {
-		return fmt.Errorf("codec was not specified")
+	if p.VideoFormat == "" {
+		return fmt.Errorf("video format was not provided")
 	}
-
-	if !opts.isCodecCompatible() {
-		return fmt.Errorf("codec %s is not compatible", opts.Codec)
-	}
-
 	for _, extension := range getValidVideoExtensions() {
-		if strings.Contains(opts.Filename, extension) {
-			return fmt.Errorf(fmt.Sprintf("invalid filename %s", opts.Filename))
+		if strings.Contains(p.Filename, extension) {
+			return fmt.Errorf(fmt.Sprintf("invalid filename %s", p.Filename))
+		}
+	}
+
+	switch queryType {
+	case QUERY_FILTERGRAPH:
+		if !p.isCodecCompatible() {
+			return fmt.Errorf("codec is not compatible with %s format", p.VideoFormat)
+		}
+	case QUERY_LOSSLESS_CUT:
+
+	case QUERY_CREATE_PROXY_FILE, QUERY_CREATE_THUMBNAIL:
+		if p.InputPath == "" {
+			return fmt.Errorf("input path was not provided")
 		}
 	}
 	return nil

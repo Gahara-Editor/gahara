@@ -26,6 +26,7 @@ export namespace video {
 	    codec: string;
 	    crf: string;
 	    preset: string;
+	    input_path?: string;
 	    output_path: string;
 	    filename: string;
 	    video_format: string;
@@ -40,6 +41,7 @@ export namespace video {
 	        this.codec = source["codec"];
 	        this.crf = source["crf"];
 	        this.preset = source["preset"];
+	        this.input_path = source["input_path"];
 	        this.output_path = source["output_path"];
 	        this.filename = source["filename"];
 	        this.video_format = source["video_format"];
@@ -51,6 +53,7 @@ export namespace video {
 	    rid: string;
 	    id: string;
 	    name: string;
+	    losslessexport: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new VideoNode(source);
@@ -63,6 +66,7 @@ export namespace video {
 	        this.rid = source["rid"];
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.losslessexport = source["losslessexport"];
 	    }
 	}
 	export class Timeline {

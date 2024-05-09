@@ -11,8 +11,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/k1nho/gahara/ffmpegbuilder"
 	"github.com/k1nho/gahara/internal/video"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -29,6 +32,26 @@ type Video struct {
 type Interval struct {
 	Start float64 `json:"start"`
 	End   float64 `json:"end"`
+}
+
+type VideoProcessingResult struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+func NewVideoProcessingResult(id string, name string, status string, msg string) *VideoProcessingResult {
+	if id == "" {
+		id = strings.Replace(uuid.New().String(), "-", "", -1)
+	}
+
+	return &VideoProcessingResult{
+		ID:      id,
+		Name:    name,
+		Status:  status,
+		Message: msg,
+	}
 }
 
 // createProxyFile: creates the proxy file to be used for editing (preserve original media)
@@ -243,6 +266,10 @@ func (a *App) RenameVideoNode(pos int, name string) error {
 	return a.Timeline.RenameVideoNode(pos, name)
 }
 
+func (a *App) ToggleLossless(pos int) error {
+	return a.Timeline.ToggleLossless(pos)
+}
+
 // ResetTimeline: cleanup timeline state in memory
 func (a *App) ResetTimeline() {
 	a.Timeline = video.NewTimeline()
@@ -261,36 +288,7 @@ func (a *App) GetTrackDuration() (float64, error) {
 	return duration, nil
 }
 
-// FFmpegQueryBuild: builds the FFmpeg query based on timeline state and processing options (codec, resolution)
-func (a *App) ffmpegQueryBuild(processingOpts *video.ProcessingOpts) (string, error) {
-	err := video.ValidateProcessingOpts(processingOpts)
-	if err != nil {
-		return "", err
-	}
-
-	inputArgs, err := a.Timeline.InputArgs()
-	if err != nil {
-		return "", err
-	}
-
-	query, err := a.Timeline.MergeClipsQuery(processingOpts)
-	if err != nil {
-		return "", err
-	}
-
-	outputArgs, err := a.Timeline.OutputArgs(processingOpts)
-	if err != nil {
-		return "", err
-	}
-
-	var ffmpegQuery strings.Builder
-	ffmpegQuery.WriteString("ffmpeg -v quiet -stats_period 5s -progress pipe:2")
-	ffmpegQuery.WriteString(inputArgs)
-	ffmpegQuery.WriteString(query)
-	ffmpegQuery.WriteString(outputArgs)
-	return ffmpegQuery.String(), nil
-}
-
+// GetOutputFileSavePath: retrieves the output path where the resulting video should be saved
 func (a *App) GetOutputFileSavePath() (string, error) {
 	hd, err := os.UserHomeDir()
 	if err != nil {
@@ -310,32 +308,151 @@ func (a *App) GetOutputFileSavePath() (string, error) {
 	return saveFilepath, nil
 }
 
-func (a *App) ExportVideo(userOpts video.ProcessingOpts) (string, error) {
-	query, err := a.ffmpegQueryBuild(&userOpts)
-	if err != nil {
-		return "", err
+// FFmpegQuery: produces an asset (video, image) with FFmpeg given a query type, and processing opts
+func (a *App) FFmpegQuery(queryType string, userOpts video.ProcessingOpts) error {
+	defer wruntime.EventsEmit(a.ctx, video.EVT_FFMPEG_EXEC_ENDED)
+
+	if userOpts.InputPath == "" {
+		userOpts.InputPath = a.config.ProjectDir
 	}
-	// TODO: handle win implementation
+	if err := userOpts.ValidateRequiredFields(queryType); err != nil {
+		return err
+	}
+
+	switch queryType {
+	case video.QUERY_FILTERGRAPH:
+		if err := a.queryFiltergraph(userOpts); err != nil {
+			return err
+		}
+	case video.QUERY_LOSSLESS_CUT:
+		if err := a.queryLosslessCut(userOpts); err != nil {
+			return err
+		}
+	case video.QUERY_CREATE_PROXY_FILE:
+		if err := a.queryCreateProxyFile(userOpts); err != nil {
+			return err
+		}
+	case video.QUERY_CREATE_THUMBNAIL:
+		if err := a.queryCreateThumbnail(userOpts); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("invalid query type (q_filtergraph, q_create_proxy_file, q_create_thumbnail, q_lossless_cut)")
+	}
+	return nil
+}
+
+// queryFiltergraph: executes a filtergraph query, currently merge clips
+func (a *App) queryFiltergraph(userOpts video.ProcessingOpts) error {
+	query, err := ffmpegbuilder.MergeClipsQuery(a.Timeline.VideoNodes, userOpts)
+	if err != nil {
+		return err
+	}
+	err = a.executeFFmpegQuery(query, true)
+	if err != nil {
+		return err
+	}
+
+	wruntime.EventsEmit(a.ctx, video.EVT_FFMPEG_RESULT, NewVideoProcessingResult("", userOpts.Filename, Success, ffmpegbuilder.GetFullOutputPath(userOpts)))
+	wruntime.EventsEmit(a.ctx, video.EVT_EXPORT_MSG, fmt.Sprintf("Finished exporting %s%s", userOpts.Filename, userOpts.VideoFormat))
+	return nil
+}
+
+// queryLosslessCut: executes LosslessCut for a batch of video nodes
+func (a *App) queryLosslessCut(userOpts video.ProcessingOpts) error {
+	var (
+		wg         = new(sync.WaitGroup)
+		msgChannel = make(chan VideoProcessingResult)
+	)
+
+	go func() {
+		defer close(msgChannel)
+		for msg := range msgChannel {
+			wruntime.EventsEmit(a.ctx, video.EVT_FFMPEG_RESULT, msg)
+		}
+	}()
+
+	for _, videoNode := range a.Timeline.VideoNodes {
+		if !videoNode.LosslessExport {
+			continue
+		}
+		wg.Add(1)
+		go func(vNode video.VideoNode) {
+			defer wg.Done()
+			userOpts.Filename = vNode.Name
+			query, err := ffmpegbuilder.LosslessCutQuery(vNode, userOpts)
+			if err != nil {
+				msgChannel <- VideoProcessingResult{ID: vNode.ID, Status: Failed, Message: err.Error()}
+				return
+			}
+			err = a.executeFFmpegQuery(query, false)
+			if err != nil {
+				msgChannel <- VideoProcessingResult{ID: vNode.ID, Name: vNode.Name, Status: Failed, Message: err.Error()}
+				return
+			}
+			msgChannel <- VideoProcessingResult{ID: vNode.ID, Name: vNode.Name, Status: Success, Message: ffmpegbuilder.GetFullOutputPath(userOpts)}
+		}(videoNode)
+	}
+	wg.Wait()
+	return nil
+}
+
+// queryCreateProxyFile: executes a conversion query for the given video
+func (a *App) queryCreateProxyFile(userOpts video.ProcessingOpts) error {
+	query, err := ffmpegbuilder.CreateProxyFileQuery(userOpts, ".mov")
+	if err != nil {
+		return err
+	}
+
+	err = a.executeFFmpegQuery(query, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// queryCreateThumbnail: executes a query to generate a thumbnail for a video (picks 1st frame)
+func (a *App) queryCreateThumbnail(userOpts video.ProcessingOpts) error {
+	query, err := ffmpegbuilder.CreateThumbnailQuery(userOpts, ".png")
+	if err != nil {
+		return err
+	}
+
+	err = a.executeFFmpegQuery(query, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// executeFFmpegQuery: executes an ffmpeg query
+func (a *App) executeFFmpegQuery(query string, withMonitoring bool) error {
+	// TODO: implement windows
 	cmd := exec.Command("bash", "-c", query)
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return "", fmt.Errorf("could not initialize ffmpeg monitoring")
+		return fmt.Errorf("could not initialize ffmpeg monitoring")
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		return "", fmt.Errorf("could not initialize video export")
+		return fmt.Errorf("could not initialize video export")
 	}
-	go a.monitorFFmpegOuput(stderrPipe)
+	if withMonitoring {
+		go a.monitorFFmpegOuput(stderrPipe)
+	}
 
 	err = cmd.Wait()
 	if err != nil {
-		return "", fmt.Errorf("could not export the video: %s%s", userOpts.Filename, userOpts.VideoFormat)
+		return fmt.Errorf("could not export the video")
 	}
-	return fmt.Sprintf("%s%s has been processed!", userOpts.Filename, userOpts.VideoFormat), err
+	return nil
 }
 
+// monitorFFmpegOuput: monitors ffmpeg query progress
 func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser) {
 	total, err := a.GetTrackDuration()
 	if err != nil {
