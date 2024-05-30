@@ -1,0 +1,39 @@
+name: Test, and lint
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Run Golang Linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54.2
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set Up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Run Tests
+        run: go tests ./... -cover
