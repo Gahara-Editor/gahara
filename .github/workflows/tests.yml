@@ -1,10 +1,10 @@
-name: Test, and lint
+name: Test and Lint
 
 on:
-  push:
-    branches:
-      - "**"
   pull_request:
+    branches:
+      - main
+      - beta
     types:
       - opened
       - edited
@@ -14,6 +14,44 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Cache Node.js dependencies
+        id: cache-node-modules
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          cd frontend
+          npm install
+
+      - name: Cache build output
+        id: cache-dist
+        uses: actions/cache@v3
+        with:
+          path: frontend/dist
+          key: ${{ runner.os }}-dist-${{ hashFiles('**/frontend/src/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-dist-
+
+      - name: Build frontend
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: |
+          cd frontend
+          npm run build
+
       - name: Set Up Go
         uses: actions/setup-go@v4
         with:
@@ -30,10 +68,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Cache Node.js dependencies
+        id: cache-node-modules
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          cd frontend
+          npm install
+
+      - name: Cache build output
+        id: cache-dist
+        uses: actions/cache@v3
+        with:
+          path: frontend/dist
+          key: ${{ runner.os }}-dist-${{ hashFiles('**/frontend/src/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-dist-
+
+      - name: Build frontend
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: |
+          cd frontend
+          npm run build
+
       - name: Set Up Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.22"
 
       - name: Run Tests
-        run: go tests ./... -cover
+        run: go test ./... -cover
