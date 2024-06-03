@@ -11,13 +11,10 @@
     <img src="https://img.shields.io/github/issues/Gahara-Editor/gahara" alt="GitHub issues">
   </a>
  <img src="https://img.shields.io/github/commit-activity/w/Gahara-Editor/gahara" alt="GitHub commit activity">
+ <img src="https://github.com/Gahara-Editor/gahara/actions/workflows/tests.yml/badge.svg" alt="code coverage badge">
 </p>
 
-
-
 https://github.com/Gahara-Editor/gahara/assets/59541661/c9f07d7a-9e8e-4bb2-96b1-002f13764724
-
-
 
 Gahara is a lightweight video editor app powered by the multimedia tool FFmpeg and built with the Wails framework. It provides a GUI to manage video projects and operate on multiple video clips with functions such as adding, removing, and trimming segments. Additionally, it has exporting features such as concatenating video clips (lossy), and support for converting videos to various formats supported by FFmpeg, such as .mp4, .avi, .wmv, and more.
 
