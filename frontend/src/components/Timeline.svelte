@@ -14,7 +14,11 @@
   import { flip } from "svelte/animate";
   import { EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
   import EventModal from "./EventModal.svelte";
-  import { InsertInterval, RenameVideoNode } from "../../wailsjs/go/main/App";
+  import {
+    InsertInterval,
+    RenameVideoNode,
+    ToggleLossless,
+  } from "../../wailsjs/go/main/App";
   import RenameIcon from "../icons/RenameIcon.svelte";
   import SearchList from "../components/SearchList.svelte";
   import { formatSecondsToHMS } from "../lib/utils";
@@ -64,6 +68,7 @@
     addVideoToTrack,
     setTrackTime,
     renameClipInTrack,
+    toggleLosslessMarkofClip,
     resetTrackStore,
   } = trackStore;
 
@@ -385,6 +390,16 @@
   EventsOn("evt_saved_timeline", (msg: string) => {
     setActionMsg(msg);
   });
+
+  EventsOn("evt_toggle_lossless", () => {
+    if ($videoNode) {
+      ToggleLossless($videoNodePos)
+        .then(() => {
+          toggleLosslessMarkofClip(0, $videoNodePos);
+        })
+        .catch((err) => setActionMsg(err));
+    }
+  });
   onDestroy(() => {
     EventsOff(
       "evt_open_rename_clip_modal",
@@ -395,6 +410,7 @@
       "evt_insertclip_edit",
       "evt_zoom_timeline",
       "evt_saved_timeline",
+      "evt_toggle_lossless",
     );
     resetTrackStore();
     resetToolingStore();
@@ -521,6 +537,11 @@
             <p>
               {formatSecondsToHMS(tVideo.end - tVideo.start)}
             </p>
+            {#if tVideo.losslessexport}
+              <span class="w-6 font-bold text-lg text-center text-gyellow">
+                M
+              </span>
+            {/if}
           </div>
         </div>
       {/each}

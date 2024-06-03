@@ -16,7 +16,7 @@ export function DeleteRIDReferences(arg1:string):Promise<void>;
 
 export function EnableVideoMenus():Promise<void>;
 
-export function ExportVideo(arg1:video.ProcessingOpts):Promise<string>;
+export function FFmpegQuery(arg1:string,arg2:video.ProcessingOpts):Promise<void>;
 
 export function FilePicker():Promise<void>;
 
@@ -36,6 +36,8 @@ export function InsertInterval(arg1:string,arg2:string,arg3:number,arg4:number,a
 
 export function LoadTimeline():Promise<video.Timeline>;
 
+export function OpenFile(arg1:string):Promise<void>;
+
 export function ReadGaharaWorkspace():Promise<Array<string>>;
 
 export function ReadProjectWorkspace():Promise<Array<main.Video>>;
@@ -53,3 +55,5 @@ export function SetDefaultAppMenu():Promise<void>;
 export function SetProjectDirectory(arg1:string):Promise<void>;
 
 export function SplitInterval(arg1:string,arg2:number,arg3:number,arg4:number):Promise<Array<video.VideoNode>>;
+
+export function ToggleLossless(arg1:number):Promise<void>;

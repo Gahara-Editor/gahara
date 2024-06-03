@@ -225,6 +225,15 @@ function createTracksStore() {
     });
   };
 
+  const toggleLosslessMarkofClip = (id: number, pos: number) => {
+    update((tracks) => {
+      if (!tracks[id]) return tracks;
+      if (pos < 0 || pos > tracks[0].length) return tracks;
+      tracks[id][pos].losslessexport = !tracks[id][pos].losslessexport;
+      return tracks;
+    });
+  };
+
   const resetTrackStore = () => {
     set([]);
     setTrackTime(0);
@@ -240,6 +249,7 @@ function createTracksStore() {
     removeAndAddIntervalToTrack,
     removeRIDReferencesFromTrack,
     renameClipInTrack,
+    toggleLosslessMarkofClip,
     trackDuration,
     resetTrackStore,
   };
@@ -523,6 +533,8 @@ function createExportOptionsStore() {
   const isProcessingVid = writable<boolean>(false);
   const processingMsg = writable<string>("");
   const progressPercentage = writable<number>(0.0);
+  const videoProcessingResults = writable<Array<any>>([]);
+  const exportTabIndex = writable<number>(1);
 
   const { set: setFilename } = filename;
   const { set: setResolution } = resolution;
@@ -534,6 +546,11 @@ function createExportOptionsStore() {
   const { set: setIsProcessingVid } = isProcessingVid;
   const { set: setProcessingMsg } = processingMsg;
   const { set: setProgressPercentage } = progressPercentage;
+  const {
+    set: setVideoProcessingResults,
+    update: updateVideoProcessingResults,
+  } = videoProcessingResults;
+  const { set: setExportTabIndex } = exportTabIndex;
 
   function getCompatibleCodecs(selectedFormat: string) {
     switch (selectedFormat) {
@@ -548,6 +565,7 @@ function createExportOptionsStore() {
 
   function getExportOptions(): video.ProcessingOpts {
     const exportOpts: video.ProcessingOpts = {
+      input_path: "",
       output_path: get(outputPath),
       filename: get(filename),
       video_format: get(videoFormat),
@@ -557,6 +575,10 @@ function createExportOptionsStore() {
       crf: get(crf),
     };
     return exportOpts;
+  }
+
+  function addProcessingResult(result: any) {
+    updateVideoProcessingResults((results) => [...results, result]);
   }
 
   function resetExportOptionsStore() {
@@ -570,6 +592,8 @@ function createExportOptionsStore() {
     setIsProcessingVid(false);
     setProcessingMsg("");
     setProgressPercentage(0.0);
+    setVideoProcessingResults([]);
+    setExportTabIndex(1);
   }
 
   return {
@@ -596,6 +620,11 @@ function createExportOptionsStore() {
     isProcessingVid,
     processingMsg,
     setProcessingMsg,
+    videoProcessingResults,
+    setVideoProcessingResults,
+    addProcessingResult,
+    exportTabIndex,
+    setExportTabIndex,
     resetExportOptionsStore,
   };
 }
