@@ -32,7 +32,8 @@ const (
 	QUERY_CREATE_PROXY_FILE = "q_create_proxy_file"
 	QUERY_CREATE_THUMBNAIL  = "q_create_thumbnail"
 	// Epsilon: margin for floating point checks
-	Epsilon = 1e-6
+	Epsilon          = 1e-6
+	EVT_CHANGE_ROUTE = "evt_change_route"
 	// EVT_FFMPEG_RESULT: signals the result of a FFmpeg query in the form of a VideoProcessingResult
 	EVT_FFMPEG_RESULT = "evt_ffmpeg_result"
 	// EVT_FFMPEG_EXEC_ENDED: signals that the ffmpeg query has ended (does not indicate success of the query)

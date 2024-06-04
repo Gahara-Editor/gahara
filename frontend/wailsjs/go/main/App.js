@@ -22,6 +22,10 @@ export function DeleteRIDReferences(arg1) {
   return window['go']['main']['App']['DeleteRIDReferences'](arg1);
 }
 
+export function EnableExportMenus() {
+  return window['go']['main']['App']['EnableExportMenus']();
+}
+
 export function EnableVideoMenus() {
   return window['go']['main']['App']['EnableVideoMenus']();
 }

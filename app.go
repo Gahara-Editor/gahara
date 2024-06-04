@@ -257,6 +257,22 @@ func (a *App) SetDefaultAppMenu() {
 	wruntime.MenuUpdateApplicationMenu(a.ctx)
 }
 
+// EnableExportMenus: it enables the menus for the export layout view
+func (a *App) EnableExportMenus() {
+	exportMenu := menu.NewMenu()
+	exportMenu.AddText("Back to Project", keys.Shift("b"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_ROUTE, "video")
+	})
+
+	appMenu := a.AppMenu()
+	appMenu.Items = append(appMenu.Items, &menu.MenuItem{
+		Label:   "Export",
+		SubMenu: exportMenu,
+	})
+	wruntime.MenuSetApplicationMenu(a.ctx, appMenu)
+	wruntime.MenuUpdateApplicationMenu(a.ctx)
+}
+
 // EnableVideoMenus: It enables the menus for the video layout view
 func (a *App) EnableVideoMenus() {
 	timelineMenu := menu.NewMenu()
@@ -279,6 +295,13 @@ func (a *App) EnableVideoMenus() {
 	})
 	timelineMenu.AddText("Mark/Unmark Lossless Export", keys.Key("m"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_LOSSLESS)
+	})
+	timelineMenu.AddText("Change Project", keys.Shift("b"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_ROUTE, "main")
+	})
+
+	timelineMenu.AddText("Export Project", keys.Shift("e"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_ROUTE, "export")
 	})
 	timelineMenu.AddText("Toggle Vim Mode", keys.CmdOrCtrl("i"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_VIM_MODE)

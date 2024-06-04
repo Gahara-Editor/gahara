@@ -6,6 +6,7 @@
     FFmpegQuery,
     ToggleLossless,
     OpenFile,
+    EnableExportMenus,
   } from "../wailsjs/go/main/App";
   import { exportOptionsStore, router, projectName } from "./stores";
   import { onDestroy, onMount } from "svelte";
@@ -54,6 +55,7 @@
         videoNodes = [...timeline.video_nodes];
       })
       .catch(() => console.log("could not load timeline"));
+    EnableExportMenus();
   });
 
   $: {
@@ -123,21 +125,21 @@
     setProgressPercentage(0);
     setIsProcessingVid(false);
   });
-  EventsOn("evt_export_msg", (msg: string) => {
-    setProcessingMsg(msg);
-  });
   EventsOn("evt_ffmpeg_result", (result: any) => {
     addProcessingResult(result);
   });
+  EventsOn("evt_export_msg", (msg: string) => {
+    setProcessingMsg(msg);
+  });
 
   onDestroy(() => {
+    resetExportOptionsStore();
     EventsOff(
       "evt_encoding_progress",
       "evt_ffmpeg_exec_ended",
       "evt_ffmpeg_result",
       "evt_export_msg",
     );
-    resetExportOptionsStore();
   });
 </script>
 
