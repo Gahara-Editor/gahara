@@ -57,7 +57,7 @@
     setVideoFilesError,
     resetVideoFiles,
   } = videoFiles;
-  const { setRoute } = router;
+  const { setRoute, route } = router;
   const { actionMessage, setActionMsg } = toolingStore;
 
   onMount(() => {
@@ -124,7 +124,7 @@
   });
 
   onDestroy(() => {
-    SetDefaultAppMenu();
+    if ($route === "main") SetDefaultAppMenu();
     EventsOff(
       "evt_proxy_file_created",
       "evt_error_msg",

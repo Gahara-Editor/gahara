@@ -14,6 +14,8 @@ export function DeleteProjectFile(arg1:string):Promise<void>;
 
 export function DeleteRIDReferences(arg1:string):Promise<void>;
 
+export function EnableExportMenus():Promise<void>;
+
 export function EnableVideoMenus():Promise<void>;
 
 export function FFmpegQuery(arg1:string,arg2:video.ProcessingOpts):Promise<void>;
