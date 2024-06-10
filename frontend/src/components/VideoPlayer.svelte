@@ -69,7 +69,7 @@
   }
 
   function handleStop() {
-    video.pause();
+    if (video) video.pause();
     $currentTime = $videoNode ? $videoNode.start : 0;
   }
 
