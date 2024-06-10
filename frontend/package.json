@@ -8,13 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest"
+    "test": "vitest run",
+    "test-watch": "vitest"
   },
   "devDependencies": {
     "@rgossiaux/svelte-heroicons": "^0.1.2",
     "@sveltejs/vite-plugin-svelte": "^1.0.1",
+    "@testing-library/svelte": "^5.1.0",
     "@tsconfig/svelte": "^3.0.0",
     "autoprefixer": "^10.4.16",
+    "jsdom": "^24.1.0",
     "postcss": "^8.4.31",
     "prettier": "^3.0.3",
     "prettier-plugin-svelte": "^3.0.3",
