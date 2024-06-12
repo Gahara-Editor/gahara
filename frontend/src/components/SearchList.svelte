@@ -12,8 +12,7 @@
   } = toolingStore;
   const { addVideoToTrack } = trackStore;
   const { searchFiles } = videoFiles;
-  const { source, setVideoSrc, setCurrentTime, getDuration, viewVideo } =
-    videoStore;
+  const { source, setVideoSrc, setCurrentTime, viewVideo } = videoStore;
 
   let searchTerm = "";
   let searchIdx = -1;
@@ -44,14 +43,11 @@
       if (searchIdx >= 0 && searchIdx < searchList.length) {
         viewVideo(searchList[searchIdx]);
 
-        const videoDuration = getDuration();
-        if (videoDuration === 0) return;
-
         InsertInterval(
           $source,
           searchList[searchIdx].name,
           0,
-          videoDuration,
+          searchList[searchIdx].duration,
           $videoNodePos,
         )
           .then((tVideo) => {

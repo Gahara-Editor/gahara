@@ -1,9 +1,11 @@
 export namespace main {
 	
 	export class Video {
+	    id: string;
 	    name: string;
 	    extension: string;
 	    filepath: string;
+	    duration: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Video(source);
@@ -11,9 +13,11 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.extension = source["extension"];
 	        this.filepath = source["filepath"];
+	        this.duration = source["duration"];
 	    }
 	}
 

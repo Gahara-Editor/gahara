@@ -1,5 +1,5 @@
 import { draggedVideo, trackStore, videoStore, toolingStore } from "../stores";
-import type { video, main } from "../../wailsjs/go/models";
+import type { main } from "../../wailsjs/go/models";
 import { InsertInterval } from "../../wailsjs/go/main/App";
 
 export function draggable(node: HTMLDivElement, data: main.Video) {
@@ -72,7 +72,7 @@ export function dropzone(node: HTMLDivElement, opts) {
       videoID,
       draggedVideo.value().name,
       0,
-      videoStore.getDuration(),
+      draggedVideo.value().duration,
       0,
     )
       .then((tVideo) => {

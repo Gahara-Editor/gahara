@@ -63,6 +63,8 @@ type OutputParams struct {
 	// MovFlags: -movflags in ffmpeg, mov, mp4, and ismv support fragmentation. The metadata about all packets is stored in one location,
 	// but it can be moved at the start for better playback (+faststart)
 	MovFlags string
+	// NullOutput: -f null -  in ffmpeg (used to check info only)
+	NullOutput string
 }
 
 func NewDefaultFFmpegBuilder() *FFmpegBuilder {
@@ -113,8 +115,18 @@ func (f *FFmpegBuilder) WithStatsPeriod(statsPeriod string) *FFmpegBuilder {
 	return f
 }
 
+func (f *FFmpegBuilder) WithVerbose(verbose string) *FFmpegBuilder {
+	f.PreInputParams.VerboseMode = ""
+	return f
+}
+
 func (f *FFmpegBuilder) WithCodec(codec string) *FFmpegBuilder {
 	f.OutputParams.Codec = codec
+	return f
+}
+
+func (f *FFmpegBuilder) WithNullOutput() *FFmpegBuilder {
+	f.OutputParams.NullOutput = "-f null -"
 	return f
 }
 
@@ -258,6 +270,9 @@ func (f *FFmpegBuilder) BuildQuery() (string, error) {
 	}
 
 	// Append output parameters
+	if f.OutputParams.NullOutput != "" {
+		cmd.WriteString(fmt.Sprintf("%s ", f.OutputParams.NullOutput))
+	}
 	if f.OutputParams.Duration != 0 {
 		cmd.WriteString(fmt.Sprintf("-t %.4f ", f.OutputParams.Duration))
 	}

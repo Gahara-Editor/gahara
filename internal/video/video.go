@@ -70,6 +70,8 @@ const (
 	EVT_INTERVAL_CUT = "intervalCut"
 	// EVT_SLICE_CUT: slice cut event
 	EVT_SLICE_CUT = "evt_slice_cut"
+	// EVT_DURATION_EXTRACTED: duration extracted from ffmpeg execution
+	EVT_DURATION_EXTRACTED = "evt_duration_extracted"
 	// EVT_ENCODING_PROGRESS: encoding progress event
 	EVT_ENCODING_PROGRESS = "evt_encoding_progress"
 	// EVT_EXPORT_MSG: message for exporting a video events
@@ -124,6 +126,12 @@ const (
 	PRESET_MEDIUM = "medium"
 	// PRESET_FAST: fast preset provides faster encoding speed at the tradeoff of better compression
 	PRESET_FAST = "fast"
+	// OUT_TIME_US: out_time_us term to monitor in ffmpeg execution
+	OBV_OUT_TIME_US = "out_time_us"
+	// OUT_TIME: out_time term to monitor in ffmpeg execution
+	OBV_OUT_TIME = "out_time"
+	// Duration: duration term to monitor in ffmpeg execution
+	OBV_DURATION = "Duration"
 )
 
 type VideoNode struct {
@@ -342,9 +350,6 @@ func FormatTime(seconds float64) string {
 }
 
 func (p *ProcessingOpts) ValidateRequiredFields(queryType string) error {
-	if p.OutputPath == "" {
-		return fmt.Errorf("output path was not provided")
-	}
 	if p.Filename == "" {
 		return fmt.Errorf("filename was not provided")
 	}
@@ -359,12 +364,21 @@ func (p *ProcessingOpts) ValidateRequiredFields(queryType string) error {
 
 	switch queryType {
 	case QUERY_FILTERGRAPH:
+		if p.OutputPath == "" {
+			return fmt.Errorf("output path was not provided")
+		}
 		if !p.isCodecCompatible() {
 			return fmt.Errorf("codec is not compatible with %s format", p.VideoFormat)
 		}
 	case QUERY_LOSSLESS_CUT:
+		if p.OutputPath == "" {
+			return fmt.Errorf("output path was not provided")
+		}
 
 	case QUERY_CREATE_PROXY_FILE, QUERY_CREATE_THUMBNAIL:
+		if p.OutputPath == "" {
+			return fmt.Errorf("output path was not provided")
+		}
 		if p.InputPath == "" {
 			return fmt.Errorf("input path was not provided")
 		}

@@ -3,7 +3,9 @@
     FilePicker,
     ReadProjectWorkspace,
     LoadTimeline,
+    LoadProjectFiles,
     SaveTimeline,
+    SaveProjectFiles,
     ResetTimeline,
     DeleteRIDReferences,
     DeleteProjectFile,
@@ -51,8 +53,6 @@
     pipelineMessages,
     videoFilesError,
     removeVideoFile,
-    addPipelineMsg,
-    removePipelineMsg,
     addVideos,
     setVideoFilesError,
     resetVideoFiles,
@@ -61,17 +61,24 @@
   const { actionMessage, setActionMsg } = toolingStore;
 
   onMount(() => {
-    loadProjectFiles();
-    loadTimeline();
+    if ($videoFiles.length <= 0) loadProjectFiles();
+    if ($trackStore.length <= 0) loadTimeline();
     EnableVideoMenus();
   });
 
   function loadProjectFiles() {
-    if ($videoFiles.length === 0) {
-      ReadProjectWorkspace()
-        .then((files) => addVideos(files))
-        .catch(() => setVideoFilesError("No files in this project"));
-    }
+    LoadProjectFiles()
+      .then((files) => {
+        addVideos(files);
+      })
+      .catch(() => {
+        ReadProjectWorkspace()
+          .then((files) => {
+            addVideos(files);
+            SaveProjectFiles(files).then().catch(console.log);
+          })
+          .catch(() => setVideoFilesError("No files in this project"));
+      });
   }
 
   function loadTimeline() {
@@ -103,6 +110,7 @@
       await SaveTimeline();
       removeRIDReferencesFromTrack(0, rid);
       removeVideoFile(video.name);
+      await SaveProjectFiles($videoFiles);
     } catch (err) {
       setVideoFilesError(err);
     }
@@ -111,13 +119,10 @@
   EventsOn("evt_proxy_file_created", (video: main.Video) => {
     setVideoFilesError("");
     addVideos([video]);
-    removePipelineMsg();
+    SaveProjectFiles($videoFiles).then().catch(console.log);
   });
   EventsOn("evt_proxy_error_msg", (msg: string) => {
     setVideoFilesError(msg);
-  });
-  EventsOn("evt_proxy_pipeline_msg", (msg: string) => {
-    addPipelineMsg(msg);
   });
   EventsOn("evt_upload_file", () => {
     selectFile();
@@ -125,12 +130,7 @@
 
   onDestroy(() => {
     if ($route === "main") SetDefaultAppMenu();
-    EventsOff(
-      "evt_proxy_file_created",
-      "evt_error_msg",
-      "evt_proxy_pipeline_msg",
-      "evt_upload_file",
-    );
+    EventsOff("evt_proxy_file_created", "evt_error_msg", "evt_upload_file");
   });
 </script>
 
