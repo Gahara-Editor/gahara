@@ -66,6 +66,10 @@ export function InsertInterval(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['InsertInterval'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function LoadProjectFiles() {
+  return window['go']['main']['App']['LoadProjectFiles']();
+}
+
 export function LoadTimeline() {
   return window['go']['main']['App']['LoadTimeline']();
 }
@@ -92,6 +96,10 @@ export function RenameVideoNode(arg1, arg2) {
 
 export function ResetTimeline() {
   return window['go']['main']['App']['ResetTimeline']();
+}
+
+export function SaveProjectFiles(arg1) {
+  return window['go']['main']['App']['SaveProjectFiles'](arg1);
 }
 
 export function SaveTimeline() {

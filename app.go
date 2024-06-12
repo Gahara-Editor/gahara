@@ -207,7 +207,17 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 			if !video.IsValidExtension(filepath.Ext(project.Name())) {
 				continue
 			}
-			projectFiles = append(projectFiles, Video{Name: strings.Split(project.Name(), ".")[0], Extension: filepath.Ext(project.Name()), FilePath: a.config.ProjectDir})
+
+			duration, err := getVideoDuration(video.ProcessingOpts{
+				Filename:    strings.Split(project.Name(), ".")[0],
+				VideoFormat: filepath.Ext(project.Name()),
+				InputPath:   a.config.ProjectDir,
+			})
+			if err != nil {
+				wruntime.LogError(a.ctx, fmt.Sprintf("could not check video duration: %s", err.Error()))
+				continue
+			}
+			projectFiles = append(projectFiles, Video{Name: strings.Split(project.Name(), ".")[0], Extension: filepath.Ext(project.Name()), FilePath: a.config.ProjectDir, Duration: duration})
 		}
 	}
 

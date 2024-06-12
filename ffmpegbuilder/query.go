@@ -5,14 +5,31 @@ import (
 	"github.com/k1nho/gahara/internal/video"
 )
 
+func CheckVideoDuration(userOpts video.ProcessingOpts) (string, error) {
+	input := GetFullInputPath(userOpts)
+
+	query, err := NewDefaultFFmpegBuilder().WithInputs(input).
+		WithNullOutput().WithVerbose("").BuildQuery()
+	if err != nil {
+		return "", err
+	}
+	return query, nil
+}
+
 // CreateProxyFileQuery: creates a proxy file for a video
 func CreateProxyFileQuery(userOpts video.ProcessingOpts, format string) (string, error) {
 	input := GetFullInputPath(userOpts)
 	userOpts.VideoFormat = format
 	output := GetFullOutputPath(userOpts)
 
-	query, err := NewDefaultFFmpegBuilder().WithInputs(input).WithCodec("copy").
-		WithOutputs(output).BuildQuery()
+	querybuilder := NewDefaultFFmpegBuilder().WithInputs(input).WithCodec("copy").
+		WithOutputs(output)
+
+	if err := querybuilder.validateProxyFileCreationQuery(); err != nil {
+		return "", err
+	}
+
+	query, err := querybuilder.BuildQuery()
 	if err != nil {
 		return "", err
 	}
@@ -20,7 +37,7 @@ func CreateProxyFileQuery(userOpts video.ProcessingOpts, format string) (string,
 	return query, nil
 }
 
-// GenerateThumbnailQuery: generate a thumbnail from a video
+// CreateThumbnailQuery: generates a thumbnail taking the 1 frame of a video
 func CreateThumbnailQuery(userOpts video.ProcessingOpts, format string) (string, error) {
 	input := GetFullInputPath(userOpts)
 	userOpts.VideoFormat = format

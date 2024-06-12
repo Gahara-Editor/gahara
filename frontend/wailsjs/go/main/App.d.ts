@@ -36,6 +36,8 @@ export function GetTrackDuration():Promise<number>;
 
 export function InsertInterval(arg1:string,arg2:string,arg3:number,arg4:number,arg5:number):Promise<video.VideoNode>;
 
+export function LoadProjectFiles():Promise<Array<main.Video>>;
+
 export function LoadTimeline():Promise<video.Timeline>;
 
 export function OpenFile(arg1:string):Promise<void>;
@@ -49,6 +51,8 @@ export function RemoveInterval(arg1:number):Promise<void>;
 export function RenameVideoNode(arg1:number,arg2:string):Promise<void>;
 
 export function ResetTimeline():Promise<void>;
+
+export function SaveProjectFiles(arg1:Array<main.Video>):Promise<void>;
 
 export function SaveTimeline():Promise<void>;
 

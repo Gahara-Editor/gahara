@@ -21,12 +21,16 @@ import (
 )
 
 type Video struct {
+	// ID: the unique identifier of the video
+	ID string `json:"id"`
 	// Name: the name of the video file (includes extension)
 	Name string `json:"name"`
 	// Extension: the container type of the video (mp4, avi, etc)
 	Extension string `json:"extension"`
 	// FilePath: the absolute path of the video
 	FilePath string `json:"filepath"`
+	// Duration: the duration of the video in seconds
+	Duration float64 `json:"duration"`
 }
 
 type Interval struct {
@@ -39,6 +43,30 @@ type VideoProcessingResult struct {
 	Name    string `json:"name"`
 	Status  string `json:"status"`
 	Message string `json:"message"`
+}
+
+type MonitoringOpts struct {
+	terms map[string]bool
+}
+
+func NewVideo(name string, extension string, filepath string, duration float64) *Video {
+	return &Video{
+		ID:        strings.Replace(uuid.New().String(), "-", "", -1),
+		Name:      name,
+		Extension: extension,
+		FilePath:  filepath,
+		Duration:  duration,
+	}
+}
+
+func NewMonitoringOpts(observeParams ...string) *MonitoringOpts {
+	terms := make(map[string]bool)
+	for _, word := range observeParams {
+		terms[word] = true
+	}
+	return &MonitoringOpts{
+		terms: terms,
+	}
 }
 
 func NewVideoProcessingResult(id string, name string, status string, msg string) *VideoProcessingResult {
@@ -81,9 +109,20 @@ func (a *App) createProxyFile(inputFilePath string) {
 	// check that a proxy has not already been created for the file
 	_, err = os.Stat(pathProxyFile)
 	if os.IsNotExist(err) {
-		cmd := video.CreateProxyFileCMD(inputFilePath, pathProxyFile)
-		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_PIPELINE_MSG, name)
-		err := cmd.Run()
+		pfile := NewVideo(name, filepath.Ext(proxyFile), a.config.ProjectDir, 0)
+
+		cancelDurationListener := wruntime.EventsOnce(a.ctx, video.EVT_DURATION_EXTRACTED, func(duration ...interface{}) {
+			pfile.Duration = duration[0].(float64)
+			wruntime.EventsEmit(a.ctx, video.EVT_PROXY_FILE_CREATED, pfile)
+		})
+		defer cancelDurationListener()
+
+		err := a.FFmpegQuery(video.QUERY_CREATE_PROXY_FILE, video.ProcessingOpts{
+			Filename:    name,
+			VideoFormat: fmt.Sprintf(".%s", ext),
+			InputPath:   filepath.Dir(inputFilePath),
+			OutputPath:  a.config.ProjectDir,
+		})
 		if err != nil {
 			wruntime.LogError(a.ctx, fmt.Sprintf("could not create the proxy file for %s: %s", inputFilePath, err.Error()))
 			wruntime.EventsEmit(a.ctx, video.EVT_PROXY_ERROR_MSG, fmt.Sprintf("failed to import %s", fileName))
@@ -91,14 +130,6 @@ func (a *App) createProxyFile(inputFilePath string) {
 		}
 
 		wruntime.LogInfo(a.ctx, fmt.Sprintf("proxy file created: %s", fileName))
-		wruntime.EventsEmit(a.ctx, video.EVT_PROXY_FILE_CREATED,
-			Video{Name: name, FilePath: a.config.ProjectDir, Extension: filepath.Ext(proxyFile)})
-
-		// Once the proxy file is created, generate a thumbnail
-		err = a.GenerateThumbnail(pathProxyFile)
-		if err != nil {
-			wruntime.LogError(a.ctx, fmt.Sprintf("could not generate thumbnail for proxy file %s: %s", inputFilePath, err.Error()))
-		}
 		return
 	} else if err != nil {
 		wruntime.LogError(a.ctx, fmt.Sprintf("file finding error: %s", err.Error()))
@@ -190,6 +221,21 @@ func (a *App) GetProjectThumbnail(projectName string) (string, error) {
 
 }
 
+func (a *App) SaveProjectFiles(projectFiles []Video) error {
+	data, err := json.MarshalIndent(projectFiles, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(path.Join(a.config.ProjectDir, "metadata.json"), data, 0644)
+	if err != nil {
+		return err
+	}
+
+	wruntime.LogInfo(a.ctx, "project files have been saved")
+	return nil
+}
+
 // SaveTimeline: save project timeline into the project filesystem
 func (a *App) SaveTimeline() error {
 	if a.Timeline.VideoNodes == nil && len(a.Timeline.VideoNodes) <= 0 {
@@ -204,7 +250,7 @@ func (a *App) SaveTimeline() error {
 	if err != nil {
 		return err
 	}
-	wruntime.LogInfo(a.ctx, fmt.Sprintf("%s: Timeline has been saved", time.Now().String()))
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("%s: timeline has been saved", time.Now().String()))
 	return nil
 }
 
@@ -213,7 +259,7 @@ func (a *App) LoadTimeline() (video.Timeline, error) {
 	var timeline video.Timeline
 	timelinePath := path.Join(a.config.ProjectDir, "timeline.json")
 	if _, err := os.Stat(timelinePath); err != nil {
-		return timeline, fmt.Errorf("No timeline found for this project")
+		return timeline, fmt.Errorf("no timeline found for this project")
 	}
 
 	bytes, err := os.ReadFile(timelinePath)
@@ -233,8 +279,38 @@ func (a *App) LoadTimeline() (video.Timeline, error) {
 		return timeline, fmt.Errorf("empty timeline")
 	}
 
-	wruntime.LogInfo(a.ctx, "timeline file has been found!")
+	wruntime.LogInfo(a.ctx, "timeline has been loaded!")
 	return a.GetTimeline(), nil
+}
+
+// LoadTimeline: retrieves saved project files, if any, from filesystem
+func (a *App) LoadProjectFiles() ([]Video, error) {
+	var videoFiles []Video
+	metadataPath := path.Join(a.config.ProjectDir, "metadata.json")
+	if _, err := os.Stat(metadataPath); err != nil {
+		return videoFiles, fmt.Errorf("No video files found for this project")
+	}
+
+	bytes, err := os.ReadFile(metadataPath)
+	if err != nil {
+		wruntime.LogError(a.ctx, "could not read the video files metadata file")
+		return videoFiles, fmt.Errorf("could not read timeline file")
+	}
+
+	err = json.Unmarshal(bytes, &videoFiles)
+	if err != nil {
+		wruntime.LogError(a.ctx, "could not unmarshal the files")
+		return videoFiles, err
+	}
+
+	if len(videoFiles) == 0 {
+		wruntime.LogInfo(a.ctx, "empty video files")
+		return videoFiles, fmt.Errorf("empty video files")
+	}
+
+	wruntime.LogInfo(a.ctx, "video files loaded")
+	return videoFiles, nil
+
 }
 
 // GetTimeline: returns the video timeline which is composed of video nodes
@@ -348,7 +424,7 @@ func (a *App) queryFiltergraph(userOpts video.ProcessingOpts) error {
 	if err != nil {
 		return err
 	}
-	err = a.executeFFmpegQuery(query, true)
+	err = a.executeFFmpegQuery(query, NewMonitoringOpts(video.OBV_OUT_TIME_US))
 	if err != nil {
 		return err
 	}
@@ -385,7 +461,7 @@ func (a *App) queryLosslessCut(userOpts video.ProcessingOpts) error {
 				msgChannel <- VideoProcessingResult{ID: vNode.ID, Status: Failed, Message: err.Error()}
 				return
 			}
-			err = a.executeFFmpegQuery(query, false)
+			err = a.executeFFmpegQuery(query, nil)
 			if err != nil {
 				msgChannel <- VideoProcessingResult{ID: vNode.ID, Name: vNode.Name, Status: Failed, Message: err.Error()}
 				return
@@ -404,7 +480,7 @@ func (a *App) queryCreateProxyFile(userOpts video.ProcessingOpts) error {
 		return err
 	}
 
-	err = a.executeFFmpegQuery(query, false)
+	err = a.executeFFmpegQuery(query, NewMonitoringOpts(video.OBV_OUT_TIME))
 	if err != nil {
 		return err
 	}
@@ -419,7 +495,7 @@ func (a *App) queryCreateThumbnail(userOpts video.ProcessingOpts) error {
 		return err
 	}
 
-	err = a.executeFFmpegQuery(query, false)
+	err = a.executeFFmpegQuery(query, nil)
 	if err != nil {
 		return err
 	}
@@ -428,7 +504,7 @@ func (a *App) queryCreateThumbnail(userOpts video.ProcessingOpts) error {
 }
 
 // executeFFmpegQuery: executes an ffmpeg query
-func (a *App) executeFFmpegQuery(query string, withMonitoring bool) error {
+func (a *App) executeFFmpegQuery(query string, monitoringOpts *MonitoringOpts) error {
 	// TODO: implement windows
 	cmd := exec.Command("bash", "-c", query)
 
@@ -441,8 +517,8 @@ func (a *App) executeFFmpegQuery(query string, withMonitoring bool) error {
 	if err != nil {
 		return fmt.Errorf("could not initialize video export")
 	}
-	if withMonitoring {
-		go a.monitorFFmpegOuput(stderrPipe)
+	if monitoringOpts != nil {
+		go a.monitorFFmpegOuput(stderrPipe, monitoringOpts)
 	}
 
 	err = cmd.Wait()
@@ -453,7 +529,8 @@ func (a *App) executeFFmpegQuery(query string, withMonitoring bool) error {
 }
 
 // monitorFFmpegOuput: monitors ffmpeg query progress
-func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser) {
+func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser, monitoringOpts *MonitoringOpts) {
+	wruntime.LogInfo(a.ctx, "monitoring FFmpeg query")
 	total, err := a.GetTrackDuration()
 	if err != nil {
 		return
@@ -461,7 +538,7 @@ func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser) {
 	scanner := bufio.NewScanner(FFmpegOut)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, "out_time_us") {
+		if strings.Contains(line, video.OBV_OUT_TIME_US) && monitoringOpts.terms[video.OBV_OUT_TIME_US] {
 			args := strings.Split(line, "=")
 			timeMicro, err := strconv.Atoi(args[1])
 			if err != nil {
@@ -473,5 +550,92 @@ func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser) {
 			}
 			wruntime.EventsEmit(a.ctx, video.EVT_ENCODING_PROGRESS, (timeSeconds*100)/int(total))
 		}
+		if strings.Contains(line, video.OBV_OUT_TIME) && monitoringOpts.terms[video.OBV_OUT_TIME] {
+			args := strings.Split(line, "=")
+			if args[0] != video.OBV_OUT_TIME {
+				continue
+			}
+			duration, err := convertHMStoSeconds(args[1])
+			if err != nil {
+				// TODO: handle conversion error
+				continue
+			}
+			wruntime.EventsEmit(a.ctx, video.EVT_DURATION_EXTRACTED, duration)
+		}
 	}
+}
+
+func convertHMStoSeconds(hms string) (float64, error) {
+	parts := strings.Split(hms, ".")
+	if len(parts) != 2 {
+		return 0.0, fmt.Errorf("could not parse decimal part")
+	}
+
+	timeParts := strings.Split(parts[0], ":")
+	if len(timeParts) != 3 {
+		return 0.0, fmt.Errorf("could not parse time part")
+	}
+
+	hours, err := strconv.Atoi(timeParts[0])
+	if err != nil {
+		return 0.0, fmt.Errorf("could not convert hours to int")
+	}
+
+	minutes, err := strconv.Atoi(timeParts[1])
+	if err != nil {
+		return 0.0, fmt.Errorf("could not convert minutes to int")
+	}
+
+	seconds, err := strconv.Atoi(timeParts[2])
+	if err != nil {
+		return 0.0, fmt.Errorf("could not convert seconds to int")
+	}
+
+	microseconds, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0.0, fmt.Errorf("could not convert microseconds to int")
+	}
+
+	totalSeconds := float64(hours*3600+minutes*60+seconds) + float64(microseconds)/1000000
+	return totalSeconds, nil
+}
+
+func getVideoDuration(userOpts video.ProcessingOpts) (float64, error) {
+	query, err := ffmpegbuilder.CheckVideoDuration(userOpts)
+	if err != nil {
+		return 0, err
+	}
+	cmd := exec.Command("bash", "-c", query)
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return 0, fmt.Errorf("could not initialize ffmpeg monitoring")
+	}
+
+	scanner := bufio.NewScanner(stderrPipe)
+
+	err = cmd.Start()
+	if err != nil {
+		return 0, fmt.Errorf("could not initialize video duration extraction")
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, video.OBV_DURATION) {
+			hms := strings.Split(strings.TrimSpace(strings.Split(line, ",")[0]), "Duration: ")[1]
+			duration, err := convertHMStoSeconds(hms)
+			if err != nil {
+				continue
+			}
+			return duration, nil
+		}
+
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return 0, fmt.Errorf("could not extract duration of the video")
+	}
+	return 0, nil
+
 }

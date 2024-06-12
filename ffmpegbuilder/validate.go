@@ -38,3 +38,17 @@ func (f *FFmpegBuilder) validateLosslessCutQuery() error {
 	}
 	return nil
 }
+
+func (f *FFmpegBuilder) validateProxyFileCreationQuery() error {
+	if len(f.Inputs) != 1 {
+		return fmt.Errorf("no input stream(s) provided")
+	}
+	if len(f.Outputs) != 1 {
+		return fmt.Errorf("no output stream(s) provided")
+	}
+
+	if f.OutputParams.Codec != "copy" {
+		return fmt.Errorf("codec must be copy. No re-encoding needed for proxy")
+	}
+	return nil
+}
