@@ -234,6 +234,26 @@ function createTracksStore() {
     });
   };
 
+  const markAllLossless = () => {
+    update((tracks) => {
+      if (!tracks[0]) return tracks;
+      for (let track of tracks[0]) {
+        track.losslessexport = true;
+      }
+      return tracks;
+    });
+  };
+
+  const unmarkAllLossless = () => {
+    update((tracks) => {
+      if (!tracks[0]) return tracks;
+      for (let track of tracks[0]) {
+        track.losslessexport = false;
+      }
+      return tracks;
+    });
+  };
+
   const resetTrackStore = () => {
     set([]);
     setTrackTime(0);
@@ -250,6 +270,8 @@ function createTracksStore() {
     removeRIDReferencesFromTrack,
     renameClipInTrack,
     toggleLosslessMarkofClip,
+    markAllLossless,
+    unmarkAllLossless,
     trackDuration,
     resetTrackStore,
   };

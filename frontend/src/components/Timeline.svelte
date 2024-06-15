@@ -18,6 +18,8 @@
     InsertInterval,
     RenameVideoNode,
     ToggleLossless,
+    MarkAllLossless,
+    UnmarkAllLossless,
   } from "../../wailsjs/go/main/App";
   import RenameIcon from "../icons/RenameIcon.svelte";
   import SearchList from "../components/SearchList.svelte";
@@ -69,6 +71,8 @@
     setTrackTime,
     renameClipInTrack,
     toggleLosslessMarkofClip,
+    markAllLossless,
+    unmarkAllLossless,
     resetTrackStore,
   } = trackStore;
 
@@ -400,6 +404,25 @@
         .catch((err) => setActionMsg(err));
     }
   });
+
+  EventsOn("evt_mark_all_lossless", () => {
+    MarkAllLossless()
+      .then(() => {
+        markAllLossless();
+        setActionMsg("-- MARKED CLIPS --");
+      })
+      .catch((err) => setActionMsg(err));
+  });
+
+  EventsOn("evt_unmark_all_lossless", () => {
+    UnmarkAllLossless()
+      .then(() => {
+        unmarkAllLossless();
+        setActionMsg("-- UNMARKED CLIPS --");
+      })
+      .catch((err) => setActionMsg(err));
+  });
+
   onDestroy(() => {
     EventsOff(
       "evt_open_rename_clip_modal",
@@ -411,6 +434,8 @@
       "evt_zoom_timeline",
       "evt_saved_timeline",
       "evt_toggle_lossless",
+      "evt_mark_all_lossless",
+      "evt_unmark_all_lossless",
     );
     resetTrackStore();
     resetToolingStore();

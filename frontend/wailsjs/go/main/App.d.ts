@@ -40,6 +40,8 @@ export function LoadProjectFiles():Promise<Array<main.Video>>;
 
 export function LoadTimeline():Promise<video.Timeline>;
 
+export function MarkAllLossless():Promise<void>;
+
 export function OpenFile(arg1:string):Promise<void>;
 
 export function ReadGaharaWorkspace():Promise<Array<string>>;
@@ -63,3 +65,5 @@ export function SetProjectDirectory(arg1:string):Promise<void>;
 export function SplitInterval(arg1:string,arg2:number,arg3:number,arg4:number):Promise<Array<video.VideoNode>>;
 
 export function ToggleLossless(arg1:number):Promise<void>;
+
+export function UnmarkAllLossless():Promise<void>;
