@@ -52,6 +52,10 @@ const (
 	EVT_INSERTCLIP_EDIT = "evt_insertclip_edit"
 	//EVT_TOGGLE_LOSSLESS: toggles the video node status to be exported as lossless
 	EVT_TOGGLE_LOSSLESS = "evt_toggle_lossless"
+	// EVT_MARK_ALL_LOSSLESS: marks all the video nodes as lossless
+	EVT_MARK_ALL_LOSSLESS = "evt_mark_all_lossless"
+	//EVT_UNMARK_ALL_LOSSLESS: umarks all the video nodes marked as lossless
+	EVT_UNMARK_ALL_LOSSLESS = "evt_unmark_all_lossless"
 	// EVT_EXECUTE_EDIT: execute the current edit
 	EVT_EXECUTE_EDIT = "evt_execute_edit"
 	// EVT_PLAY_TRACK: plays the clips on the track (starting from current pos and clip time)
@@ -239,6 +243,30 @@ func (tl *Timeline) ToggleLossless(pos int) error {
 		return fmt.Errorf("there are no video clips to mark")
 	}
 	tl.VideoNodes[pos].LosslessExport = !tl.VideoNodes[pos].LosslessExport
+	return nil
+}
+
+func (tl *Timeline) MarkAllLossless() error {
+	if len(tl.VideoNodes) == 0 {
+		return fmt.Errorf("there are no video clips to mark")
+	}
+
+	for i := range tl.VideoNodes {
+		tl.VideoNodes[i].LosslessExport = true
+	}
+
+	return nil
+}
+
+func (tl *Timeline) UnmarkAllLossless() error {
+	if len(tl.VideoNodes) == 0 {
+		return fmt.Errorf("there are no video clips to mark")
+	}
+
+	for i := range tl.VideoNodes {
+		tl.VideoNodes[i].LosslessExport = false
+	}
+
 	return nil
 }
 

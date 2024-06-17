@@ -346,6 +346,14 @@ func (a *App) ToggleLossless(pos int) error {
 	return a.Timeline.ToggleLossless(pos)
 }
 
+func (a *App) MarkAllLossless() error {
+	return a.Timeline.MarkAllLossless()
+}
+
+func (a *App) UnmarkAllLossless() error {
+	return a.Timeline.UnmarkAllLossless()
+}
+
 // ResetTimeline: cleanup timeline state in memory
 func (a *App) ResetTimeline() {
 	a.Timeline = video.NewTimeline()

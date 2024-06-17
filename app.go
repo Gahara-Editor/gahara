@@ -303,9 +303,16 @@ func (a *App) EnableVideoMenus() {
 	timelineMenu.AddText("Rename Clip", keys.CmdOrCtrl("r"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_OPEN_RENAME_CLIP_MODAL)
 	})
-	timelineMenu.AddText("Mark/Unmark Lossless Export", keys.Key("m"), func(cd *menu.CallbackData) {
+	timelineMenu.AddText("Mark/Unmark Clip (Lossless Export)", keys.Key("m"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_LOSSLESS)
 	})
+	timelineMenu.AddText("Mark All Clips (Lossless Export)", keys.Shift("m"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_MARK_ALL_LOSSLESS)
+	})
+	timelineMenu.AddText("Unmark All Clips (Lossless Export)", keys.Shift("u"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_UNMARK_ALL_LOSSLESS)
+	})
+
 	timelineMenu.AddText("Change Project", keys.Shift("b"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_CHANGE_ROUTE, "main")
 	})

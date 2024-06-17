@@ -74,6 +74,10 @@ export function LoadTimeline() {
   return window['go']['main']['App']['LoadTimeline']();
 }
 
+export function MarkAllLossless() {
+  return window['go']['main']['App']['MarkAllLossless']();
+}
+
 export function OpenFile(arg1) {
   return window['go']['main']['App']['OpenFile'](arg1);
 }
@@ -120,4 +124,8 @@ export function SplitInterval(arg1, arg2, arg3, arg4) {
 
 export function ToggleLossless(arg1) {
   return window['go']['main']['App']['ToggleLossless'](arg1);
+}
+
+export function UnmarkAllLossless() {
+  return window['go']['main']['App']['UnmarkAllLossless']();
 }
