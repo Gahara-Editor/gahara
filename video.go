@@ -428,7 +428,7 @@ func (a *App) FFmpegQuery(queryType string, userOpts video.ProcessingOpts) error
 
 // queryFiltergraph: executes a filtergraph query, currently merge clips
 func (a *App) queryFiltergraph(userOpts video.ProcessingOpts) error {
-	query, err := ffmpegbuilder.MergeClipsQuery(a.Timeline.VideoNodes, userOpts)
+	query, err := ffmpegbuilder.MergeClipsQuery(a.FFmpegPath, a.Timeline.VideoNodes, userOpts)
 	if err != nil {
 		return err
 	}
@@ -464,7 +464,7 @@ func (a *App) queryLosslessCut(userOpts video.ProcessingOpts) error {
 		go func(vNode video.VideoNode) {
 			defer wg.Done()
 			userOpts.Filename = vNode.Name
-			query, err := ffmpegbuilder.LosslessCutQuery(vNode, userOpts)
+			query, err := ffmpegbuilder.LosslessCutQuery(a.FFmpegPath, vNode, userOpts)
 			if err != nil {
 				msgChannel <- VideoProcessingResult{ID: vNode.ID, Status: Failed, Message: err.Error()}
 				return
@@ -483,11 +483,10 @@ func (a *App) queryLosslessCut(userOpts video.ProcessingOpts) error {
 
 // queryCreateProxyFile: executes a conversion query for the given video
 func (a *App) queryCreateProxyFile(userOpts video.ProcessingOpts) error {
-	query, err := ffmpegbuilder.CreateProxyFileQuery(userOpts, ".mov")
+	query, err := ffmpegbuilder.CreateProxyFileQuery(a.FFmpegPath, userOpts, ".mov")
 	if err != nil {
 		return err
 	}
-
 	err = a.executeFFmpegQuery(query, NewMonitoringOpts(video.OBV_OUT_TIME))
 	if err != nil {
 		return err
@@ -498,7 +497,7 @@ func (a *App) queryCreateProxyFile(userOpts video.ProcessingOpts) error {
 
 // queryCreateThumbnail: executes a query to generate a thumbnail for a video (picks 1st frame)
 func (a *App) queryCreateThumbnail(userOpts video.ProcessingOpts) error {
-	query, err := ffmpegbuilder.CreateThumbnailQuery(userOpts, ".png")
+	query, err := ffmpegbuilder.CreateThumbnailQuery(a.FFmpegPath, userOpts, ".png")
 	if err != nil {
 		return err
 	}
@@ -568,6 +567,9 @@ func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser, monitoringOpts *Monito
 				// TODO: handle conversion error
 				continue
 			}
+			if duration < video.Epsilon {
+				continue
+			}
 			wruntime.EventsEmit(a.ctx, video.EVT_DURATION_EXTRACTED, duration)
 		}
 	}
@@ -608,8 +610,8 @@ func convertHMStoSeconds(hms string) (float64, error) {
 	return totalSeconds, nil
 }
 
-func getVideoDuration(userOpts video.ProcessingOpts) (float64, error) {
-	query, err := ffmpegbuilder.CheckVideoDuration(userOpts)
+func getVideoDuration(FFmpegPath string, userOpts video.ProcessingOpts) (float64, error) {
+	query, err := ffmpegbuilder.CheckVideoDuration(FFmpegPath, userOpts)
 	if err != nil {
 		return 0, err
 	}

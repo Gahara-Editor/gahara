@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"runtime"
 
@@ -38,6 +39,8 @@ type App struct {
 	config Config
 	// Timeline: the project timeline
 	Timeline video.Timeline `json:"timeline"`
+	// FFmpegPath: the configured ffmpeg on build
+	FFmpegPath string
 }
 
 // NewApp creates a new App application struct
@@ -51,8 +54,25 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	err := a.gaharaSetup()
 	if err != nil {
-		wruntime.LogFatal(ctx, err.Error())
+		wruntime.LogFatal(a.ctx, err.Error())
 	}
+	FFmpegPath, err := ExtractFFmpeg()
+	if err != nil {
+		wruntime.LogFatal(a.ctx, fmt.Sprintf("could not initialize FFmpeg: %s", err.Error()))
+	}
+	a.FFmpegPath = FFmpegPath
+	wruntime.LogInfo(a.ctx, fmt.Sprintf("initialized FFmpeg at %s", a.FFmpegPath))
+}
+
+func (a *App) cleanup(ctx context.Context) {
+	_, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := os.RemoveAll(filepath.Dir(a.FFmpegPath))
+	if err != nil {
+		wruntime.LogError(a.ctx, "could not cleanup FFmpeg")
+	}
+	wruntime.LogInfo(a.ctx, "FFmpeg was cleaned")
 }
 
 // FilePicker: opens the native file picker for the user
@@ -208,7 +228,7 @@ func (a *App) ReadProjectWorkspace() ([]Video, error) {
 				continue
 			}
 
-			duration, err := getVideoDuration(video.ProcessingOpts{
+			duration, err := getVideoDuration(a.FFmpegPath, video.ProcessingOpts{
 				Filename:    strings.Split(project.Name(), ".")[0],
 				VideoFormat: filepath.Ext(project.Name()),
 				InputPath:   a.config.ProjectDir,

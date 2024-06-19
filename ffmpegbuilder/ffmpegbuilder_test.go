@@ -22,7 +22,7 @@ func TestFFmpegBuilder(t *testing.T) {
 
 	t.Run("format conversion query", func(t *testing.T) {
 		expectedQuery := "ffmpeg -hide_banner -v quiet -stats_period 5s -progress pipe:2 -i \"myinput.mp4\" \"myoutput.mov\" "
-		query, err := NewDefaultFFmpegBuilder().WithInputs("myinput.mp4").WithOutputs("myoutput.mov").BuildQuery()
+		query, err := NewDefaultFFmpegBuilder("ffmpeg").WithInputs("myinput.mp4").WithOutputs("myoutput.mov").BuildQuery()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -33,7 +33,7 @@ func TestFFmpegBuilder(t *testing.T) {
 
 	t.Run("generate proxy file query", func(t *testing.T) {
 		expectedQuery := "ffmpeg -hide_banner -v quiet -stats_period 5s -progress pipe:2 -i \"inputpath/input.mp4\" -c copy \"outputpath/input.mov\" "
-		query, err := CreateProxyFileQuery(video.ProcessingOpts{
+		query, err := CreateProxyFileQuery("ffmpeg", video.ProcessingOpts{
 			Filename:    "input",
 			InputPath:   "inputpath",
 			OutputPath:  "outputpath",
@@ -49,7 +49,7 @@ func TestFFmpegBuilder(t *testing.T) {
 
 	t.Run("generate thumbnail query", func(t *testing.T) {
 		expectedQuery := "ffmpeg -hide_banner -v quiet -stats_period 5s -progress pipe:2 -i \"inputpath/input.mp4\" -frames:v 1 \"outputpath/input.png\" "
-		query, err := CreateThumbnailQuery(video.ProcessingOpts{
+		query, err := CreateThumbnailQuery("ffmpeg", video.ProcessingOpts{
 			Filename:    "input",
 			InputPath:   "inputpath",
 			OutputPath:  "outputpath",
@@ -66,7 +66,7 @@ func TestFFmpegBuilder(t *testing.T) {
 	t.Run("concat filter query", func(t *testing.T) {
 		expectedQuery := "ffmpeg -hide_banner -v quiet -stats_period 5s -progress pipe:2 -i \"root1\" -i \"root2\" -i \"root3\" -filter_complex \"[0:v]trim=start=20.1000:end=25.2000,setpts=PTS-STARTPTS,scale=1920x1080[v0];[0:v]trim=start=1.1200:end=10.2000,setpts=PTS-STARTPTS,scale=1920x1080[v1];[1:v]trim=start=12.2000:end=21.2000,setpts=PTS-STARTPTS,scale=1920x1080[v2];[2:v]trim=start=69.1120:end=80.2300,setpts=PTS-STARTPTS,scale=1920x1080[v3];[v0][v1][v2][v3]concat=n=4:v=1:a=0[out]\" -map \"[out]\" -c:v libx264 -crf 18 -preset medium \"outputpath/myvideo.mp4\" "
 
-		query, err := MergeClipsQuery(mockTl().VideoNodes, video.ProcessingOpts{
+		query, err := MergeClipsQuery("ffmpeg", mockTl().VideoNodes, video.ProcessingOpts{
 			Resolution:  "1920x1080",
 			Codec:       "libx264",
 			CRF:         "18",
@@ -90,7 +90,7 @@ func TestFFmpegBuilder(t *testing.T) {
 
 		expectedQuery := fmt.Sprintf("ffmpeg -hide_banner -v quiet -stats_period 5s -progress pipe:2 -ss 22.2300 -i \"root1\" -t %.4f -avoid_negative_ts make_zero -c copy -movflags '+faststart' \"outputpath/myvideo.mp4\" ", duration)
 
-		query, err := LosslessCutQuery(videoNode, video.ProcessingOpts{
+		query, err := LosslessCutQuery("ffmpeg", videoNode, video.ProcessingOpts{
 			OutputPath:  "outputpath",
 			Filename:    videoNode.Name,
 			VideoFormat: ".mp4",
