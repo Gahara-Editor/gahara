@@ -5,10 +5,10 @@ import (
 	"github.com/k1nho/gahara/internal/video"
 )
 
-func CheckVideoDuration(userOpts video.ProcessingOpts) (string, error) {
+func CheckVideoDuration(FFmpegPath string, userOpts video.ProcessingOpts) (string, error) {
 	input := GetFullInputPath(userOpts)
 
-	query, err := NewDefaultFFmpegBuilder().WithInputs(input).
+	query, err := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(input).
 		WithNullOutput().WithVerbose("").BuildQuery()
 	if err != nil {
 		return "", err
@@ -17,12 +17,12 @@ func CheckVideoDuration(userOpts video.ProcessingOpts) (string, error) {
 }
 
 // CreateProxyFileQuery: creates a proxy file for a video
-func CreateProxyFileQuery(userOpts video.ProcessingOpts, format string) (string, error) {
+func CreateProxyFileQuery(FFmpegPath string, userOpts video.ProcessingOpts, format string) (string, error) {
 	input := GetFullInputPath(userOpts)
 	userOpts.VideoFormat = format
 	output := GetFullOutputPath(userOpts)
 
-	querybuilder := NewDefaultFFmpegBuilder().WithInputs(input).WithCodec("copy").
+	querybuilder := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(input).WithCodec("copy").
 		WithOutputs(output)
 
 	if err := querybuilder.validateProxyFileCreationQuery(); err != nil {
@@ -38,12 +38,12 @@ func CreateProxyFileQuery(userOpts video.ProcessingOpts, format string) (string,
 }
 
 // CreateThumbnailQuery: generates a thumbnail taking the 1 frame of a video
-func CreateThumbnailQuery(userOpts video.ProcessingOpts, format string) (string, error) {
+func CreateThumbnailQuery(FFmpegPath string, userOpts video.ProcessingOpts, format string) (string, error) {
 	input := GetFullInputPath(userOpts)
 	userOpts.VideoFormat = format
 	output := GetFullOutputPath(userOpts)
 
-	query, err := NewDefaultFFmpegBuilder().WithInputs(input).WithScale(userOpts.Resolution).
+	query, err := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(input).WithScale(userOpts.Resolution).
 		WithVideoFrames("1").WithOutputs(output).BuildQuery()
 	if err != nil {
 		return "", err
@@ -53,8 +53,8 @@ func CreateThumbnailQuery(userOpts video.ProcessingOpts, format string) (string,
 }
 
 // MergeClipsQuery: returns the query to concatenate a series of video nodes
-func MergeClipsQuery(videoNodes []video.VideoNode, userOpts video.ProcessingOpts) (string, error) {
-	querybuilder := NewDefaultFFmpegBuilder().WithInputs(ExtractInputs(videoNodes)...).
+func MergeClipsQuery(FFmpegPath string, videoNodes []video.VideoNode, userOpts video.ProcessingOpts) (string, error) {
+	querybuilder := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(ExtractInputs(videoNodes)...).
 		WithPreset(userOpts.Preset).WithCRF(userOpts.CRF).WithVideoCodec(userOpts.Codec).
 		WithFScale(userOpts.Resolution).WithOutputs(GetFullOutputPath(userOpts))
 
@@ -76,11 +76,11 @@ func MergeClipsQuery(videoNodes []video.VideoNode, userOpts video.ProcessingOpts
 }
 
 // LosslessCutQuery: returns the query string to make a lossless cut of a video node
-func LosslessCutQuery(videoNode video.VideoNode, userOpts video.ProcessingOpts) (string, error) {
+func LosslessCutQuery(FFmpegPath string, videoNode video.VideoNode, userOpts video.ProcessingOpts) (string, error) {
 	// overwrite filename, if it was passed by default lossy opts
 	userOpts.Filename = videoNode.Name
 
-	querybuilder := NewDefaultFFmpegBuilder().WithInputs(videoNode.RID).WithInputStartTime(videoNode.Start).
+	querybuilder := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(videoNode.RID).WithInputStartTime(videoNode.Start).
 		WithOutputDuration(videoNode.End - videoNode.Start).WithCodec("copy").WithAvoidNegativeTS("make_zero").
 		WithMovFlags("+faststart").WithOutputs(GetFullOutputPath(userOpts))
 

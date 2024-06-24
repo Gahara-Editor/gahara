@@ -1,4 +1,5 @@
 build/
+resources/
 node_modules
 frontend/dist
 .DS_STORE

@@ -6,6 +6,9 @@ on:
       # Match any new tag
       - "*"
 
+permissions:
+  contents: write
+
 env:
   # Necessary for most environments as build failure can occur due to OOM issues
   NODE_OPTIONS: "--max-old-space-size=4096"
@@ -18,9 +21,6 @@ jobs:
       matrix:
         build:
           - name: "Gahara"
-            platform: "linux/amd64"
-            os: "ubuntu-latest"
-          - name: "Gahara"
             platform: "darwin/universal"
             os: "macos-latest"
 
@@ -31,11 +31,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download FFmpeg for macOS
+        if: matrix.build.platform == 'darwin/universal'
+        run: |
+          chmod +x hack/setup.sh
+          ./hack/setup.sh ${{matrix.build.platform}}
+
       - name: Build wails
         uses: dAppServer/wails-build-action@v2.2
         id: build
         with:
           build-name: ${{ matrix.build.name }}
           build-platform: ${{ matrix.build.platform }}
-          package: false
           go-version: "1.22"

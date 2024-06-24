@@ -8,6 +8,7 @@ import (
 )
 
 type FFmpegBuilder struct {
+	FFmpegPath         string
 	PreInputParams     PreInputParams
 	Inputs             []string
 	FilterGraphParams  FilterGraphParams
@@ -67,8 +68,9 @@ type OutputParams struct {
 	NullOutput string
 }
 
-func NewDefaultFFmpegBuilder() *FFmpegBuilder {
+func NewDefaultFFmpegBuilder(FFmpegPath string) *FFmpegBuilder {
 	return &FFmpegBuilder{
+		FFmpegPath:         FFmpegPath,
 		PreInputParams:     NewDefaultPreInputParams(),
 		Inputs:             []string{},
 		ComplexFilterGraph: []string{},
@@ -223,7 +225,7 @@ func (f *FFmpegBuilder) ConcatFilter(videoNodes []video.VideoNode) (string, erro
 // BuildQuery: returns the ffmpeg query with all the parameters given
 func (f *FFmpegBuilder) BuildQuery() (string, error) {
 	var cmd strings.Builder
-	cmd.WriteString("ffmpeg ")
+	cmd.WriteString(fmt.Sprintf("%s ", f.FFmpegPath))
 
 	if f.PreInputParams.HideBanner {
 		cmd.WriteString("-hide_banner ")

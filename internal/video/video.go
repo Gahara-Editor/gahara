@@ -310,16 +310,6 @@ func (tl *Timeline) DeleteRIDReferences(rid string) error {
 	return nil
 }
 
-// CreateProxyFile: creates a copy file from the original to preserve original and work with the given video clip
-func CreateProxyFileCMD(inputFilePath, outputFilePath string) *exec.Cmd {
-	return exec.Command("ffmpeg",
-		"-i", inputFilePath, // input
-		"-codec", "copy",
-		"-strict", "experimental",
-		outputFilePath)
-
-}
-
 // GenerateEditThumbnail: generate a thumbnail from a video
 func GenerateEditThumb(inputFilePath string, outputFilePath string, opts ThumbnailOpts) *exec.Cmd {
 	return exec.Command("ffmpeg",
