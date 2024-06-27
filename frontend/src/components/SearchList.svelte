@@ -1,22 +1,17 @@
 <script lang="ts">
-  import { videoStore, toolingStore, videoFiles, trackStore } from "../stores";
-  import type { main } from "../../wailsjs/go/models";
-  import { InsertInterval } from "../../wailsjs/go/main/App";
+  import { toolingStore, searchListstore } from "../stores";
 
+  const { setVimMode, isOpenSearchList, setIsOpenSearchList } = toolingStore;
   const {
-    videoNodePos,
-    setVimMode,
-    isOpenSearchList,
-    setIsOpenSearchList,
-    setVideoNode,
-  } = toolingStore;
-  const { addVideoToTrack } = trackStore;
-  const { searchFiles } = videoFiles;
-  const { source, setVideoSrc, setCurrentTime, viewVideo } = videoStore;
-
-  let searchTerm = "";
-  let searchIdx = -1;
-  let searchList: main.Video[] = [];
+    searchTerm,
+    searchIdx,
+    activeList,
+    setSearchIdx,
+    moveSearchIdx,
+    search,
+    executeAction,
+    resetSearchListStore,
+  } = searchListstore;
 
   function handleSearch(
     e: Event & {
@@ -24,52 +19,21 @@
     },
   ) {
     e.stopPropagation();
-    searchList = searchFiles(searchTerm);
-    if (searchList && searchList.length > 0) searchIdx = 0;
+    search();
   }
 
-  function keydown(e: KeyboardEvent) {
+  async function keydown(e: KeyboardEvent) {
     e.stopPropagation();
     if (e.key === "Escape") {
-      searchIdx = -1;
-      searchTerm = "";
-      searchList = [];
+      resetSearchListStore();
       setIsOpenSearchList(false);
       setVimMode(true);
     }
     if (e.key === "ArrowDown" || (e.key === "n" && e.ctrlKey)) moveSearchIdx(1);
     if (e.key === "ArrowUp" || (e.key === "p" && e.ctrlKey)) moveSearchIdx(-1);
     if (e.key === "Enter") {
-      if (searchIdx >= 0 && searchIdx < searchList.length) {
-        viewVideo(searchList[searchIdx]);
-
-        InsertInterval(
-          $source,
-          searchList[searchIdx].name,
-          0,
-          searchList[searchIdx].duration,
-          $videoNodePos,
-        )
-          .then((tVideo) => {
-            addVideoToTrack(0, tVideo, $videoNodePos);
-            setVideoNode(tVideo);
-            setVideoSrc(tVideo.rid);
-            setCurrentTime(tVideo.start);
-          })
-          .catch(() =>
-            toolingStore.setActionMsg(
-              `could not insert ${searchList[searchIdx].name}`,
-            ),
-          );
-      }
+      await executeAction().then(() => console.log("sucess"));
     }
-  }
-
-  function moveSearchIdx(inc: number) {
-    if (searchIdx === -1) return;
-    if (searchIdx + inc < 0) searchIdx = searchList.length - 1;
-    else if (searchIdx + inc >= searchList.length) searchIdx = 0;
-    else searchIdx = searchIdx + inc;
   }
 
   function transitionEnd(e: TransitionEvent) {
@@ -122,8 +86,8 @@
       <div id="video-clip-list">
         <h1 class="text-center font-semibold text-lg">Results</h1>
         <ul class="divide-y divide-gray-200 text-white">
-          {#each searchList as video, i}
-            {#if i === searchIdx}
+          {#each $activeList as video, i}
+            {#if i === $searchIdx}
               <li class=" bg-obsternary p-2 truncate rounded-md">
                 <span class="text-teal font-semibold">></span>
                 {video.name}
@@ -131,7 +95,7 @@
             {:else}
               <li
                 class=" bg-obsbg p-2 truncate rounded-md"
-                on:click={() => (searchIdx = i)}
+                on:click={() => setSearchIdx(i)}
               >
                 {video.name}
               </li>
@@ -146,7 +110,7 @@
       <h1 class="font-semibold">Find Clips</h1>
       <input
         type="text"
-        bind:value={searchTerm}
+        bind:value={$searchTerm}
         on:input={handleSearch}
         class="p-1 rounded-sm text-black"
         autocorrect="off"
