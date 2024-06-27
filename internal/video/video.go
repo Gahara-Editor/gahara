@@ -86,6 +86,8 @@ const (
 	EVT_PROXY_ERROR_MSG = "evt_proxy_error_msg"
 	//EVT_ENCODING_PROGRESS: proxy file has been created event
 	EVT_PROXY_FILE_CREATED = "evt_proxy_file_created"
+	// EVT_SEARCH_TIMELINE_CLIP: opens search list and sets the timeline clip search command (/x)
+	EVT_SEARCH_TIMELINE_CLIP = "evt_search_timeline_clip"
 	//SCALE_256x256: Resolution 256x256
 	SCALE_256x256 = "256x256"
 	//SCALE_316_192: Resolution 316x192
