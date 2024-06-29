@@ -1,8 +1,7 @@
 import { derived, get, writable } from "svelte/store";
 import type { main, video } from "../wailsjs/go/models";
 import { InsertInterval } from "../wailsjs/go/main/App";
-
-export type ListType = main.Video | video.VideoNode;
+import { isVideoNode, type ListType } from "./lib/utils";
 
 export function createBooleanStore(initial: boolean) {
   const isOpen = writable(initial);
@@ -672,10 +671,6 @@ function createSearchListStore() {
   const { set: setSearchIdx, update: updateSearchIdx } = searchIdx;
   const { set: setActiveList } = activeList;
 
-  function isVideoNode(unit: ListType): unit is video.VideoNode {
-    return (unit as video.VideoNode).losslessexport !== undefined;
-  }
-
   function moveSearchIdx(inc: number) {
     const N = get(activeList).length;
     if (get(searchIdx) === -1) return;
@@ -693,7 +688,6 @@ function createSearchListStore() {
       switch (match[1]) {
         case "x":
           setActiveList(trackStore.searchTracks(match[2]));
-          console.log(get(activeList));
           break;
         default:
       }

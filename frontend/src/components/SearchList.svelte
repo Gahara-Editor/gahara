@@ -1,5 +1,6 @@
 <script lang="ts">
   import { toolingStore, searchListstore } from "../stores";
+  import List from "./List.svelte";
 
   const { setVimMode, isOpenSearchList, setIsOpenSearchList } = toolingStore;
   const {
@@ -79,35 +80,11 @@
       class="absolute w-full h-full opacity-40"
       on:click={() => setIsOpenSearchList(false)}
     />
-    <div
-      id="content-wrap"
-      class="z-10 bg-gblue0 min-h-[40vh] max-h-[40vh] min-w-[60vw] max-w-[60vw] rounded border-white border-2 p-2 overflow-y-scroll"
-    >
-      <div id="video-clip-list">
-        <h1 class="text-center font-semibold text-lg">Results</h1>
-        <ul class="divide-y divide-gray-200 text-white">
-          {#each $activeList as video, i}
-            {#if i === $searchIdx}
-              <li class=" bg-obsternary p-2 truncate rounded-md">
-                <span class="text-teal font-semibold">></span>
-                {video.name}
-              </li>
-            {:else}
-              <li
-                class=" bg-obsbg p-2 truncate rounded-md"
-                on:click={() => setSearchIdx(i)}
-              >
-                {video.name}
-              </li>
-            {/if}
-          {/each}
-        </ul>
-      </div>
-    </div>
+    <List />
     <div
       class="flex flex-col items-center bg-obsbg min-w-[60vw] rounded border-white border-2 py-2 gap-2"
     >
-      <h1 class="font-semibold">Find Clips</h1>
+      <h1 class="font-semibold">Search</h1>
       <input
         type="text"
         bind:value={$searchTerm}
