@@ -2,6 +2,7 @@ import { derived, get, writable } from "svelte/store";
 import type { main, video } from "../wailsjs/go/models";
 import { InsertInterval } from "../wailsjs/go/main/App";
 import { isVideoNode, type ListType } from "./lib/utils";
+import { handleKeybindTrackClipMove } from "./lib/timeline";
 
 export function createBooleanStore(initial: boolean) {
   const isOpen = writable(initial);
@@ -264,6 +265,12 @@ function createTracksStore() {
     );
   }
 
+  function getClipPosInTrack(id: string): number {
+    let sTracks = get(tracks);
+    if (sTracks.length <= 0) return -1;
+    return sTracks[0].findIndex((track) => track.id === id);
+  }
+
   function resetTrackStore() {
     set([]);
     setTrackTime(0);
@@ -273,6 +280,7 @@ function createTracksStore() {
   return {
     subscribe,
     trackTime,
+    getClipPosInTrack,
     setTrackTime,
     addVideoToTrack,
     removeVideoFromTrack,
@@ -420,6 +428,14 @@ function createVideoToolingStore() {
     isTrackPlaying;
   const { set: setTrackZoom, update: updateTrackZoom } = trackZoom;
 
+  function getVimMode(): boolean {
+    return get(vimMode);
+  }
+
+  function getCursorIdx(): number {
+    return get(clipCursorIdx);
+  }
+
   function moveClipCursor(inc: number) {
     if (!get(vimMode)) return;
     const numClips = get(numberOfClipsInTrack);
@@ -470,9 +486,11 @@ function createVideoToolingStore() {
     isOpenSearchList,
     setIsOpenSearchList,
     vimMode,
+    getVimMode,
     setVimMode,
     updateVimMode,
     clipCursorIdx,
+    getCursorIdx,
     setClipCursorIdx,
     moveClipCursor,
     clipRegister,
@@ -704,6 +722,14 @@ function createSearchListStore() {
     if (idx >= 0 && idx < aList.length) {
       const node = aList[idx];
       if (isVideoNode(node)) {
+        let nodeidx = trackStore.getClipPosInTrack(node.id);
+        if (nodeidx !== -1) {
+          toolingStore.setClipCursorIdx(nodeidx);
+          handleKeybindTrackClipMove();
+          resetSearchListStore();
+          toolingStore.setIsOpenSearchList(false);
+          toolingStore.setVimMode(true);
+        }
       } else {
         videoStore.viewVideo(node);
 
@@ -721,6 +747,7 @@ function createSearchListStore() {
               get(toolingStore.videoNodePos),
             );
             toolingStore.setVideoNode(tVideo);
+            toolingStore.setActionMsg("-- CLIP ADDED --");
             videoStore.setVideoSrc(tVideo.rid);
             videoStore.setCurrentTime(tVideo.start);
           })

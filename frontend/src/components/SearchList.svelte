@@ -2,12 +2,10 @@
   import { toolingStore, searchListstore } from "../stores";
   import List from "./List.svelte";
 
-  const { setVimMode, isOpenSearchList, setIsOpenSearchList } = toolingStore;
+  const { setVimMode, isOpenSearchList, setIsOpenSearchList, setActionMsg } =
+    toolingStore;
   const {
     searchTerm,
-    searchIdx,
-    activeList,
-    setSearchIdx,
     moveSearchIdx,
     search,
     executeAction,
@@ -33,7 +31,9 @@
     if (e.key === "ArrowDown" || (e.key === "n" && e.ctrlKey)) moveSearchIdx(1);
     if (e.key === "ArrowUp" || (e.key === "p" && e.ctrlKey)) moveSearchIdx(-1);
     if (e.key === "Enter") {
-      await executeAction().then(() => console.log("sucess"));
+      await executeAction()
+        .then()
+        .catch((e) => setActionMsg(e));
     }
   }
 
