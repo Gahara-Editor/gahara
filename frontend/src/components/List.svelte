@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isVideo, isVideoNode, type ListType } from "../lib/utils";
+  import { isVideo, isVideoNode } from "../lib/utils";
   import { searchListstore } from "../stores";
   import VideoNodeItem from "./VideoNodeItem.svelte";
   import VideoItem from "./VideoItem.svelte";
