@@ -1,5 +1,8 @@
 import { derived, get, writable } from "svelte/store";
 import type { main, video } from "../wailsjs/go/models";
+import { InsertInterval } from "../wailsjs/go/main/App";
+import { isVideoNode, type ListType } from "./lib/utils";
+import { handleKeybindTrackClipMove } from "./lib/timeline";
 
 export function createBooleanStore(initial: boolean) {
   const isOpen = writable(initial);
@@ -95,7 +98,6 @@ function createFilesytemStore() {
   }
 
   function searchFiles(query: string): main.Video[] {
-    query = query.toLowerCase();
     return get(videoFiles).filter((video) => {
       return video.name.toLowerCase().includes(query);
     });
@@ -152,12 +154,12 @@ function createTracksStore() {
   const { set: setTrackDuration, update: updateTrackDuration } = trackDuration;
   const { set: setTrackTime } = trackTime;
 
-  const addVideoToTrack = (
+  function addVideoToTrack(
     id: number,
     video: video.VideoNode,
     pos: number,
     mode: string = "none",
-  ) => {
+  ) {
     // TODO: handle duplicated keys
     update((tracks) => {
       if (tracks.length === 0 || id > tracks.length) {
@@ -174,13 +176,13 @@ function createTracksStore() {
       return tracks;
     });
     updateTrackDuration((tDuration) => (tDuration += video.end - video.start));
-  };
+  }
 
-  const removeAndAddIntervalToTrack = (
+  function removeAndAddIntervalToTrack(
     id: number,
     pos: number,
     videoNodes: video.VideoNode[],
-  ) => {
+  ) {
     update((tracks) => {
       if (pos < 0 || pos > tracks[0].length) {
         return tracks;
@@ -188,9 +190,9 @@ function createTracksStore() {
       tracks[id].splice(pos, 1, ...videoNodes);
       return tracks;
     });
-  };
+  }
 
-  const removeVideoFromTrack = (id: number, videoNode: video.VideoNode) => {
+  function removeVideoFromTrack(id: number, videoNode: video.VideoNode) {
     update((tracks) => {
       if (!tracks[id]) return tracks;
       tracks[id] = tracks[id].filter((v) => v.id !== videoNode.id);
@@ -199,9 +201,9 @@ function createTracksStore() {
     updateTrackDuration(
       (tDuration) => (tDuration -= videoNode.end - videoNode.start),
     );
-  };
+  }
 
-  const removeRIDReferencesFromTrack = (id: number, rid: string) => {
+  function removeRIDReferencesFromTrack(id: number, rid: string) {
     let durationRemoved = 0;
     update((tracks) => {
       if (!tracks[id]) return tracks;
@@ -214,27 +216,27 @@ function createTracksStore() {
       return tracks;
     });
     updateTrackDuration((tDuration) => (tDuration -= durationRemoved));
-  };
+  }
 
-  const renameClipInTrack = (id: number, pos: number, name: string) => {
+  function renameClipInTrack(id: number, pos: number, name: string) {
     update((tracks) => {
       if (!tracks[id]) return tracks;
       if (pos < 0 || pos > tracks[0].length) return tracks;
       tracks[id][pos].name = name;
       return tracks;
     });
-  };
+  }
 
-  const toggleLosslessMarkofClip = (id: number, pos: number) => {
+  function toggleLosslessMarkofClip(id: number, pos: number) {
     update((tracks) => {
       if (!tracks[id]) return tracks;
       if (pos < 0 || pos > tracks[0].length) return tracks;
       tracks[id][pos].losslessexport = !tracks[id][pos].losslessexport;
       return tracks;
     });
-  };
+  }
 
-  const markAllLossless = () => {
+  function markAllLossless() {
     update((tracks) => {
       if (!tracks[0]) return tracks;
       for (let track of tracks[0]) {
@@ -242,9 +244,9 @@ function createTracksStore() {
       }
       return tracks;
     });
-  };
+  }
 
-  const unmarkAllLossless = () => {
+  function unmarkAllLossless() {
     update((tracks) => {
       if (!tracks[0]) return tracks;
       for (let track of tracks[0]) {
@@ -252,17 +254,33 @@ function createTracksStore() {
       }
       return tracks;
     });
-  };
+  }
 
-  const resetTrackStore = () => {
+  function searchTracks(query: string): video.VideoNode[] {
+    const sTracks = get(tracks);
+    if (sTracks.length <= 0) return [];
+
+    return sTracks[0].filter((videoNode) =>
+      videoNode.name.toLowerCase().includes(query),
+    );
+  }
+
+  function getClipPosInTrack(id: string): number {
+    let sTracks = get(tracks);
+    if (sTracks.length <= 0) return -1;
+    return sTracks[0].findIndex((track) => track.id === id);
+  }
+
+  function resetTrackStore() {
     set([]);
     setTrackTime(0);
     setTrackDuration(0);
-  };
+  }
 
   return {
     subscribe,
     trackTime,
+    getClipPosInTrack,
     setTrackTime,
     addVideoToTrack,
     removeVideoFromTrack,
@@ -273,6 +291,7 @@ function createTracksStore() {
     markAllLossless,
     unmarkAllLossless,
     trackDuration,
+    searchTracks,
     resetTrackStore,
   };
 }
@@ -409,6 +428,14 @@ function createVideoToolingStore() {
     isTrackPlaying;
   const { set: setTrackZoom, update: updateTrackZoom } = trackZoom;
 
+  function getVimMode(): boolean {
+    return get(vimMode);
+  }
+
+  function getCursorIdx(): number {
+    return get(clipCursorIdx);
+  }
+
   function moveClipCursor(inc: number) {
     if (!get(vimMode)) return;
     const numClips = get(numberOfClipsInTrack);
@@ -459,9 +486,11 @@ function createVideoToolingStore() {
     isOpenSearchList,
     setIsOpenSearchList,
     vimMode,
+    getVimMode,
     setVimMode,
     updateVimMode,
     clipCursorIdx,
+    getCursorIdx,
     setClipCursorIdx,
     moveClipCursor,
     clipRegister,
@@ -651,6 +680,103 @@ function createExportOptionsStore() {
   };
 }
 
+function createSearchListStore() {
+  let searchTerm = writable<string>("");
+  let searchIdx = writable<number>(-1);
+  let activeList = writable<ListType[]>([]);
+
+  const { set: setSearchTerm } = searchTerm;
+  const { set: setSearchIdx, update: updateSearchIdx } = searchIdx;
+  const { set: setActiveList } = activeList;
+
+  function moveSearchIdx(inc: number) {
+    const N = get(activeList).length;
+    if (get(searchIdx) === -1) return;
+    if (get(searchIdx) + inc < 0) setSearchIdx(N - 1);
+    else if (get(searchIdx) + inc >= N) setSearchIdx(0);
+    else setSearchIdx(get(searchIdx) + inc);
+  }
+
+  function search() {
+    const query = get(searchTerm).toLowerCase();
+    const commandRgx = /^\/([a-z])\s(.*)$/;
+    const match = query.match(commandRgx);
+
+    if (match) {
+      switch (match[1]) {
+        case "x":
+          setActiveList(trackStore.searchTracks(match[2]));
+          break;
+        default:
+      }
+    } else {
+      setActiveList(videoFiles.searchFiles(query));
+    }
+    if (get(activeList).length > 0) setSearchIdx(0);
+  }
+
+  async function executeAction() {
+    const idx = get(searchIdx);
+    const aList = get(activeList);
+
+    if (idx >= 0 && idx < aList.length) {
+      const node = aList[idx];
+      if (isVideoNode(node)) {
+        let nodeidx = trackStore.getClipPosInTrack(node.id);
+        if (nodeidx !== -1) {
+          toolingStore.setClipCursorIdx(nodeidx);
+          handleKeybindTrackClipMove();
+          resetSearchListStore();
+          toolingStore.setIsOpenSearchList(false);
+          toolingStore.setVimMode(true);
+        }
+      } else {
+        videoStore.viewVideo(node);
+
+        InsertInterval(
+          get(videoStore.source),
+          node.name,
+          0,
+          node.duration,
+          get(toolingStore.videoNodePos),
+        )
+          .then((tVideo) => {
+            trackStore.addVideoToTrack(
+              0,
+              tVideo,
+              get(toolingStore.videoNodePos),
+            );
+            toolingStore.setVideoNode(tVideo);
+            toolingStore.setActionMsg("-- CLIP ADDED --");
+            videoStore.setVideoSrc(tVideo.rid);
+            videoStore.setCurrentTime(tVideo.start);
+          })
+          .catch(() =>
+            toolingStore.setActionMsg(`could not insert ${aList[idx].name}`),
+          );
+      }
+    }
+  }
+
+  function resetSearchListStore() {
+    setSearchTerm("");
+    setActiveList([]);
+    setSearchIdx(-1);
+  }
+
+  return {
+    activeList,
+    search,
+    searchTerm,
+    searchIdx,
+    moveSearchIdx,
+    setSearchIdx,
+    updateSearchIdx,
+    executeAction,
+    resetSearchListStore,
+  };
+}
+
 export const router = createRouterStore();
 export const videoFiles = createFilesytemStore();
 export const mainMenuStore = createMainMenuStore();
@@ -660,3 +786,4 @@ export const draggedVideo = createVideoTransferStore();
 export const videoStore = createVideoStore();
 export const toolingStore = createVideoToolingStore();
 export const exportOptionsStore = createExportOptionsStore();
+export const searchListstore = createSearchListStore();
