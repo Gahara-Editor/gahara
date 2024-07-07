@@ -21,11 +21,11 @@ Gahara is a lightweight video editor app powered by the multimedia tool FFmpeg a
 ## 🚀 Features
 
 - **Add**, **remove**, and **cut** video clips
+- **Vim inspired keybinds:** delete, yank, paste, reorder, and move through the project timeline with Vim keybinds
 - **Video concatenation:** merge multiple video clips together (Lossy)
 - **Video clip extraction:** cut and extract smaller segments from a larger video clip (Lossless)
 - **Video format conversion:** transform the current format to another during export (.mp4, .avi, .wmv, etc)
 - **Manage projects:** ability to create, and delete multiple video projects
-- **Vim inspired keybinds:** delete, yank, paste, reorder, and move through the project timeline with Vim keybinds
 - **Video clip labeling:** ability to rename video clips
 
 ## 📜 Requirements
