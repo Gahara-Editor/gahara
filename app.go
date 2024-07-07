@@ -394,6 +394,9 @@ func (a *App) EnableVideoMenus() {
 	vimCommandsMenu.AddText("Open Search List", keys.Key("/"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_OPEN_SEARCH_LIST)
 	})
+	vimCommandsMenu.AddText("Search Timeline Clip", keys.Shift("f"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_SEARCH_TIMELINE_CLIP)
+	})
 
 	appMenu := a.AppMenu()
 	appMenu.Items = append(appMenu.Items, &menu.MenuItem{

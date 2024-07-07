@@ -7,6 +7,7 @@
     toolingStore,
     trackStore,
     createBooleanStore,
+    searchListstore,
   } from "../stores";
   import Playhead from "../icons/Playhead.svelte";
   import { slide } from "svelte/transition";
@@ -75,6 +76,7 @@
     unmarkAllLossless,
     resetTrackStore,
   } = trackStore;
+  const { setSearchTerm } = searchListstore;
 
   let selectedID = 0;
   let trackNode: HTMLDivElement;
@@ -354,6 +356,13 @@
   EventsOn("evt_open_search_list", () => {
     if ($vimMode) {
       setVimMode(false);
+      setIsOpenSearchList(true);
+    }
+  });
+  EventsOn("evt_search_timeline_clip", () => {
+    if ($vimMode) {
+      setVimMode(false);
+      setSearchTerm("/x ");
       setIsOpenSearchList(true);
     }
   });
