@@ -1,7 +1,7 @@
 <div align="center">
   <p><img src="./public/GaharaGithubIcon.svg" width="144" alt="GaharaVideoEditorIcon"/></p>
   <h1>🎬 Gahara 🎬</h1>
-  <strong>A simple video editor</strong>
+  <strong>Vim Inspired Video Editor</strong>
   <br>
 </div>
 <br>
