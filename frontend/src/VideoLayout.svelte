@@ -6,7 +6,6 @@
     LoadProjectFiles,
     SaveTimeline,
     SaveProjectFiles,
-    ResetTimeline,
     DeleteRIDReferences,
     DeleteProjectFile,
     EnableVideoMenus,
@@ -164,10 +163,6 @@
             <button
               class="bg-gblue0 rounded-lg px-2 py-1 border-2 border-white flex items-center gap-2 hover:bg-gblue transition ease-in-out duration-200"
               on:click={() => {
-                resetVideoFiles();
-                resetVideo();
-                ResetTimeline();
-                WindowSetTitle("Gahara");
                 setRoute("main");
               }}
             >

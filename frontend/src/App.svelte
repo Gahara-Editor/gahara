@@ -14,17 +14,22 @@
     EventsOn,
     WindowSetTitle,
   } from "../wailsjs/runtime/runtime";
-  import { ResetTimeline } from "../wailsjs/go/main/App";
+  import { ResetTimeline, SaveTimeline } from "../wailsjs/go/main/App";
   import { onDestroy } from "svelte";
   const { route, setRoute } = router;
   const { isProcessingVid } = exportOptionsStore;
   const { resetVideo } = videoStore;
   const { resetVideoFiles } = videoFiles;
 
-  function cleanupProjectWorkspace() {
+  async function cleanupProjectWorkspace() {
     resetVideoFiles();
     resetVideo();
-    ResetTimeline();
+    try {
+      await SaveTimeline();
+      await ResetTimeline();
+    } catch (err) {
+      console.log(err);
+    }
     WindowSetTitle("Gahara");
   }
 
@@ -36,6 +41,7 @@
             cleanupProjectWorkspace();
             break;
           case "export":
+            SaveTimeline().catch(console.log);
             WindowSetTitle(`Export - ${$projectName}`);
         }
         setRoute(to);
