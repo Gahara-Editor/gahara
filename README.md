@@ -39,7 +39,8 @@ Gahara is a lightweight video editor app powered by the multimedia tool FFmpeg a
 
 ### Releases
 
-**_Coming Soon_**
+### [Mac OS](https://github.com/Gahara-Editor/gahara/releases/download/v0.1.0-beta/Gahara.pkg) 
+**_Windows Coming Soon_**
 
 ### Build from source
 
