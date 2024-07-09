@@ -17,7 +17,7 @@
 
 https://github.com/Gahara-Editor/gahara/assets/59541661/c9f07d7a-9e8e-4bb2-96b1-002f13764724
 
-Gahara is a lightweight video editor app powered by the multimedia tool FFmpeg and built with the Wails framework. It provides a GUI to manage video projects and operate on multiple video clips with functions such as adding, removing, and trimming segments. Additionally, it has exporting features such as concatenating video clips (lossy), and support for converting videos to various formats supported by FFmpeg, such as .mp4, .avi, .wmv, and more.
+Gahara is a lightweight video editor app powered by the multimedia tool FFmpeg and built with the Wails framework. It provides a GUI to manage video projects and operate on multiple video clips with functions such as adding, removing, and trimming segments. Additionally, it has exporting features such as concatenating video clips (lossy), multi-clip extraction (lossless), and support for converting videos to various formats supported by FFmpeg, such as .mp4, .avi, .wmv, and more.
 
 ## 🚀 Features
 
