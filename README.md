@@ -12,6 +12,7 @@
   </a>
  <img src="https://img.shields.io/github/commit-activity/w/Gahara-Editor/gahara" alt="GitHub commit activity">
  <img src="https://github.com/Gahara-Editor/gahara/actions/workflows/tests.yml/badge.svg" alt="code coverage badge">
+ <img src="https://github.com/Gahara-Editor/gahara/actions/workflows/build.yml/badge.svg" alt="build badge">
 </p>
 
 https://github.com/Gahara-Editor/gahara/assets/59541661/c9f07d7a-9e8e-4bb2-96b1-002f13764724
