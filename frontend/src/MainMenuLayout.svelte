@@ -129,7 +129,7 @@
         class="border-solid border-indigo-300 border-2 rounded-md focus:border-indigo-500 focus:outline-none"
       />
       <button
-        class="rounded-full bg-indigo-500 font-semibold text-white px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200 self-center"
+        class="rounded-lg border-white border-2 bg-indigo-500 font-semibold text-white px-4 py-1.5 hover:bg-indigo-700 transition ease-in-out duration-200 self-center"
         on:click={() => createProject()}>Start</button
       >
     </div>

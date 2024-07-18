@@ -1,8 +1,17 @@
 import { derived, get, writable } from "svelte/store";
 import type { main, video } from "../wailsjs/go/models";
 import { InsertInterval } from "../wailsjs/go/main/App";
-import { isVideoNode, type ListType } from "./lib/utils";
-import { handleKeybindTrackClipMove } from "./lib/timeline";
+import {
+  isPlaceholderItem,
+  isVideo,
+  isVideoItem,
+  NODE_PLACEHOLDER,
+  NODE_VIDEO,
+  placeholderItem,
+  type ListType,
+} from "./lib/utils";
+import { isNodeVideo } from "./lib/timeline";
+import { handleKeybindTrackClipMove, type TimelineNode } from "./lib/timeline";
 
 export function createBooleanStore(initial: boolean) {
   const isOpen = writable(initial);
@@ -147,60 +156,74 @@ function createVideoTransferStore() {
 }
 
 function createTracksStore() {
-  const tracks = writable<video.VideoNode[][]>([]);
+  const tracks = writable<TimelineNode[][]>([]);
   const trackTime = writable<number>(0.0);
   const trackDuration = writable<number>(0.0);
   const { subscribe, set, update } = tracks;
   const { set: setTrackDuration, update: updateTrackDuration } = trackDuration;
   const { set: setTrackTime } = trackTime;
 
+  function addTrack() {
+    update((tracks) => {
+      tracks.push([]);
+      return tracks;
+    });
+  }
+
+  function removeTrack(tid: number) {
+    update((tracks) => {
+      if (tid >= 0 && tid < tracks.length) {
+        tracks.splice(tid, 1);
+      }
+      return tracks;
+    });
+  }
+
   function addVideoToTrack(
-    id: number,
-    video: video.VideoNode,
+    tid: number,
     pos: number,
+    node: TimelineNode,
     mode: string = "none",
   ) {
     // TODO: handle duplicated keys
     update((tracks) => {
-      if (tracks.length === 0 || id > tracks.length) {
-        tracks.push([video]);
-      } else if (id >= 0 && id < tracks.length) {
-        if (mode === "append" || tracks[id].length === 0)
-          tracks[id] = [...tracks[id], video];
+      if (tracks.length === 0 || tid > tracks.length) {
+        tracks.push([node]);
+      } else if (tid >= 0 && tid < tracks.length) {
+        if (mode === "append" || tracks[tid].length === 0)
+          tracks[tid] = [...tracks[tid], node];
         else {
-          if (pos >= 0 && pos < tracks[id].length) {
-            tracks[id].splice(pos, 0, video);
+          if (pos >= 0 && pos < tracks[tid].length) {
+            tracks[tid].splice(pos, 0, node);
           }
         }
       }
       return tracks;
     });
-    updateTrackDuration((tDuration) => (tDuration += video.end - video.start));
+    updateTrackDuration((tDuration) => (tDuration += node.end - node.start));
   }
 
   function removeAndAddIntervalToTrack(
     id: number,
     pos: number,
-    videoNodes: video.VideoNode[],
+    nodes: TimelineNode[],
   ) {
     update((tracks) => {
       if (pos < 0 || pos > tracks[0].length) {
         return tracks;
       }
-      tracks[id].splice(pos, 1, ...videoNodes);
+      tracks[id].splice(pos, 1, ...nodes);
       return tracks;
     });
   }
 
-  function removeVideoFromTrack(id: number, videoNode: video.VideoNode) {
+  function removeVideoFromTrack(id: number, node: TimelineNode) {
     update((tracks) => {
       if (!tracks[id]) return tracks;
-      tracks[id] = tracks[id].filter((v) => v.id !== videoNode.id);
+      tracks[id] = tracks[id].filter((v) => v.id !== node.id);
       return tracks;
     });
-    updateTrackDuration(
-      (tDuration) => (tDuration -= videoNode.end - videoNode.start),
-    );
+    updateTrackDuration((tDuration) => (tDuration -= node.end - node.start));
   }
 
   function removeRIDReferencesFromTrack(id: number, rid: string) {
@@ -231,7 +254,8 @@ function createTracksStore() {
     update((tracks) => {
       if (!tracks[id]) return tracks;
       if (pos < 0 || pos > tracks[0].length) return tracks;
-      tracks[id][pos].losslessexport = !tracks[id][pos].losslessexport;
+      const node = tracks[id][pos];
+      if (isNodeVideo(node)) node.losslessexport = !node.losslessexport;
       return tracks;
     });
   }
@@ -240,7 +264,7 @@ function createTracksStore() {
     update((tracks) => {
       if (!tracks[0]) return tracks;
       for (let track of tracks[0]) {
-        track.losslessexport = true;
+        if (isNodeVideo(track)) track.losslessexport = true;
       }
       return tracks;
     });
@@ -250,7 +274,7 @@ function createTracksStore() {
     update((tracks) => {
       if (!tracks[0]) return tracks;
       for (let track of tracks[0]) {
-        track.losslessexport = false;
+        if (isNodeVideo(track)) track.losslessexport = false;
       }
       return tracks;
     });
@@ -260,9 +284,13 @@ function createTracksStore() {
     const sTracks = get(tracks);
     if (sTracks.length <= 0) return [];
 
-    return sTracks[0].filter((videoNode) =>
-      videoNode.name.toLowerCase().includes(query),
-    );
+    return sTracks.reduce<video.VideoNode[]>((acc, track) => {
+      const filteredNodes = track.filter(
+        (node): node is video.VideoNode =>
+          isNodeVideo(node) && node.name.toLowerCase().includes(query),
+      );
+      return acc.concat(filteredNodes);
+    }, []);
   }
 
   function getClipPosInTrack(id: string): number {
@@ -282,6 +310,8 @@ function createTracksStore() {
     trackTime,
     getClipPosInTrack,
     setTrackTime,
+    addTrack,
+    removeTrack,
     addVideoToTrack,
     removeVideoFromTrack,
     removeAndAddIntervalToTrack,
@@ -365,7 +395,8 @@ function createVideoStore() {
 
 function createVideoToolingStore() {
   const numberOfClipsInTrack = derived(trackStore, ($trackStore) => {
-    if ($trackStore[0]) return $trackStore[0].length;
+    if ($trackStore[getTrackCursorIdx()])
+      return $trackStore[getTrackCursorIdx()].length;
     return 0;
   });
 
@@ -377,9 +408,13 @@ function createVideoToolingStore() {
   const isOpenSearchList = writable<boolean>(false);
   const { set: setIsOpenSearchList } = isOpenSearchList;
 
-  // Vim states
+  // Vim
   const clipCursorIdx = writable<number>(0);
-  const clipRegister = writable<video.VideoNode>(null);
+  const trackCursorIdx = writable<number>(0);
+  const clipRegister = writable<TimelineNode>(null);
+  const cursorColor = writable<string>("#ffffff");
+  const { set: setTrackCursorIdx, update: updateTrackCursorIdx } =
+    trackCursorIdx;
   const { set: setClipCursorIdx, update: updateClipCursorIdx } = clipCursorIdx;
   const { set: setClipRegister } = clipRegister;
 
@@ -389,17 +424,17 @@ function createVideoToolingStore() {
   const { set: setVimMode, update: updateVimMode } = vimMode;
   const { set: setEditMode } = editMode;
 
-  // Selected video information
-  const videoNode = writable<video.VideoNode>(null);
-  const videoNodePos = writable<number>(0);
-  const videoNodeWidth = writable<number>(1);
-  const videoNodeLeft = writable<number>(0);
-  const videoNodeName = writable<string>("");
-  const { set: setVideoNode } = videoNode;
-  const { set: setVideoNodePos } = videoNodePos;
-  const { set: setVideoNodeWidth } = videoNodeWidth;
-  const { set: setVideoNodeLeft } = videoNodeLeft;
-  const { set: setVideoNodeName } = videoNodeName;
+  // Selected timeline node information
+  const timelineNode = writable<TimelineNode>(null);
+  const timelineNodePos = writable<number>(0);
+  const timelineNodeWidth = writable<number>(1);
+  const timelineNodeLeft = writable<number>(0);
+  const timelineNodeName = writable<string>("");
+  const { set: setTimelineNode } = timelineNode;
+  const { set: setTimelineNodePos } = timelineNodePos;
+  const { set: setTimelineNodeWidth } = timelineNodeWidth;
+  const { set: setTimelineNodeLeft } = timelineNodeLeft;
+  const { set: setTimelineNodeName } = timelineNodeName;
 
   // Cut and range box operations
   const cutStart = writable<number>(0.0);
@@ -436,6 +471,20 @@ function createVideoToolingStore() {
     return get(clipCursorIdx);
   }
 
+  function getTrackCursorIdx(): number {
+    return get(trackCursorIdx);
+  }
+
+  function moveTrackCursor(inc: number) {
+    if (!get(vimMode)) return;
+    const numTracks = get(trackStore).length;
+    updateTrackCursorIdx((trackIdx) => {
+      if (trackIdx + inc >= numTracks) return numTracks - 1;
+      if (trackIdx + inc < 0) return 0;
+      return trackIdx + inc;
+    });
+  }
+
   function moveClipCursor(inc: number) {
     if (!get(vimMode)) return;
     const numClips = get(numberOfClipsInTrack);
@@ -463,9 +512,10 @@ function createVideoToolingStore() {
     setIsOpenSearchList(false);
     setVimMode(false);
     setClipCursorIdx(0);
+    setTrackCursorIdx(0);
     setClipRegister(null);
-    setVideoNode(null);
-    setVideoNodePos(0);
+    setTimelineNode(null);
+    setTimelineNodePos(0);
     setCutStart(0.0);
     setCutEnd(0.0);
     setClipStart(0.0);
@@ -476,7 +526,7 @@ function createVideoToolingStore() {
     setPlayheadPos(0);
     setIsTrackPlaying(false);
     movePlayhead(false);
-    setVideoNodeName("");
+    setTimelineNodeName("");
     setEditMode("select");
   }
 
@@ -489,8 +539,13 @@ function createVideoToolingStore() {
     getVimMode,
     setVimMode,
     updateVimMode,
+    cursorColor,
+    trackCursorIdx,
+    setTrackCursorIdx,
+    moveTrackCursor,
     clipCursorIdx,
     getCursorIdx,
+    getTrackCursorIdx,
     setClipCursorIdx,
     moveClipCursor,
     clipRegister,
@@ -501,16 +556,16 @@ function createVideoToolingStore() {
     setCutStart,
     cutEnd,
     setCutEnd,
-    videoNode,
-    setVideoNode,
-    videoNodeName,
-    setVideoNodeName,
-    videoNodePos,
-    setVideoNodePos,
-    videoNodeWidth,
-    setVideoNodeWidth,
-    videoNodeLeft,
-    setVideoNodeLeft,
+    timelineNode,
+    setTimelineNode,
+    timelineNodeName,
+    setTimelineNodeName,
+    timelineNodePos,
+    setTimelineNodePos,
+    timelineNodeWidth,
+    setTimelineNodeWidth,
+    timelineNodeLeft,
+    setTimelineNodeLeft,
     clipStart,
     setClipStart,
     clipEnd,
@@ -681,13 +736,26 @@ function createExportOptionsStore() {
 }
 
 function createSearchListStore() {
+  // searching
   let searchTerm = writable<string>("");
   let searchIdx = writable<number>(-1);
   let activeList = writable<ListType[]>([]);
 
+  // duration
+  let hours = writable<number>(0);
+  let minutes = writable<number>(1);
+  let seconds = writable<number>(0);
+
   const { set: setSearchTerm } = searchTerm;
   const { set: setSearchIdx, update: updateSearchIdx } = searchIdx;
   const { set: setActiveList } = activeList;
+  const { set: setHours } = hours;
+  const { set: setMinutes } = minutes;
+  const { set: setSeconds } = seconds;
+
+  function durationInSeconds(): number {
+    return get(hours) * 3600 + get(minutes) * 60 + get(seconds);
+  }
 
   function moveSearchIdx(inc: number) {
     const N = get(activeList).length;
@@ -707,6 +775,9 @@ function createSearchListStore() {
         case "x":
           setActiveList(trackStore.searchTracks(match[2]));
           break;
+        case "p":
+          setActiveList([placeholderItem]);
+          break;
         default:
       }
     } else {
@@ -720,9 +791,9 @@ function createSearchListStore() {
     const aList = get(activeList);
 
     if (idx >= 0 && idx < aList.length) {
-      const node = aList[idx];
-      if (isVideoNode(node)) {
-        let nodeidx = trackStore.getClipPosInTrack(node.id);
+      const item = aList[idx];
+      if (isVideoItem(item)) {
+        let nodeidx = trackStore.getClipPosInTrack(item.id);
         if (nodeidx !== -1) {
           toolingStore.setClipCursorIdx(nodeidx);
           handleKeybindTrackClipMove();
@@ -730,26 +801,49 @@ function createSearchListStore() {
           toolingStore.setIsOpenSearchList(false);
           toolingStore.setVimMode(true);
         }
-      } else {
-        videoStore.viewVideo(node);
-
+      } else if (isVideo(item)) {
+        videoStore.viewVideo(item);
         InsertInterval(
+          get(toolingStore.trackCursorIdx),
+          get(toolingStore.timelineNodePos),
+          NODE_VIDEO,
           get(videoStore.source),
-          node.name,
+          item.name,
           0,
-          node.duration,
-          get(toolingStore.videoNodePos),
+          item.duration,
         )
           .then((tVideo) => {
             trackStore.addVideoToTrack(
-              0,
+              get(toolingStore.trackCursorIdx),
+              get(toolingStore.timelineNodePos),
               tVideo,
-              get(toolingStore.videoNodePos),
             );
-            toolingStore.setVideoNode(tVideo);
+            toolingStore.setTimelineNode(tVideo);
             toolingStore.setActionMsg("-- CLIP ADDED --");
             videoStore.setVideoSrc(tVideo.rid);
             videoStore.setCurrentTime(tVideo.start);
+          })
+          .catch(() =>
+            toolingStore.setActionMsg(`could not insert ${aList[idx].name}`),
+          );
+      } else if (isPlaceholderItem(item)) {
+        InsertInterval(
+          get(toolingStore.trackCursorIdx),
+          get(toolingStore.timelineNodePos),
+          NODE_PLACEHOLDER,
+          "",
+          "placeholder",
+          0,
+          durationInSeconds(),
+        )
+          .then((node) => {
+            trackStore.addVideoToTrack(
+              get(toolingStore.trackCursorIdx),
+              get(toolingStore.timelineNodePos),
+              node,
+            );
+            toolingStore.setTimelineNode(node);
+            toolingStore.setActionMsg("-- PLACEHOLDER ADDED --");
           })
           .catch(() =>
             toolingStore.setActionMsg(`could not insert ${aList[idx].name}`),
@@ -765,6 +859,13 @@ function createSearchListStore() {
   }
 
   return {
+    hours,
+    minutes,
+    seconds,
+    setHours,
+    setMinutes,
+    setSeconds,
+    durationInSeconds,
     activeList,
     search,
     searchTerm,

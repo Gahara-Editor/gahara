@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { isVideo, isVideoNode } from "../lib/utils";
+  import { isPlaceholderItem, isVideo, isVideoItem } from "../lib/utils";
   import { searchListstore } from "../stores";
   import VideoNodeItem from "./VideoNodeItem.svelte";
   import VideoItem from "./VideoItem.svelte";
+  import PlaceholderNodeItem from "./PlaceholderNodeItem.svelte";
+  import Duration from "./Duration.svelte";
   const { activeList, searchIdx } = searchListstore;
 </script>
 
@@ -16,8 +18,13 @@
       {#each $activeList as item, idx}
         {#if isVideo(item)}
           <VideoItem {item} {idx} selected={idx === $searchIdx} />
-        {:else if isVideoNode(item)}
+        {:else if isVideoItem(item)}
           <VideoNodeItem {item} {idx} selected={idx === $searchIdx} />
+        {:else if isPlaceholderItem(item)}
+          <div class="flex flex-col gap-6">
+            <PlaceholderNodeItem {item} {idx} selected={idx === $searchIdx} />
+            <Duration />
+          </div>
         {/if}
       {/each}
     </ul>

@@ -13,6 +13,7 @@ import (
 
 	"runtime"
 
+	"github.com/k1nho/gahara/internal/timeline"
 	"github.com/k1nho/gahara/internal/video"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
@@ -37,15 +38,17 @@ type App struct {
 	ctx context.Context
 	// config: gahara configuration
 	config Config
-	// Timeline: the project timeline
-	Timeline video.Timeline `json:"timeline"`
+	// Timeline: the timeline of the project (NODE_VIDEO0, NODE_AUDIO, NODE_PLACEHOLDER, etc)
+	Timeline timeline.Timeline
 	// FFmpegPath: the configured ffmpeg on build
 	FFmpegPath string
+	// TrackDuration: the duration of the track being encoded
+	TrackDuration int
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{Timeline: video.NewTimeline()}
+	return &App{Timeline: timeline.NewTimeline()}
 }
 
 // startup is called when the app starts. The context is saved
@@ -97,6 +100,14 @@ func (a *App) FilePicker() error {
 	go a.createProxyFile(filepath)
 	return nil
 
+}
+
+func (a *App) AddTrack() {
+	a.Timeline.AddTrack()
+}
+
+func (a *App) RemoveTrack(tid int) error {
+	return a.Timeline.RemoveTrack(tid)
 }
 
 func (a *App) OpenFile(filepath string) error {
@@ -316,7 +327,7 @@ func (a *App) EnableVideoMenus() {
 	timelineMenu.AddText("Save Timeline", keys.CmdOrCtrl("s"), func(cd *menu.CallbackData) {
 		err := a.SaveTimeline()
 		if err != nil {
-			wruntime.LogError(a.ctx, "could not save timeline")
+			wruntime.LogError(a.ctx, "could not save video")
 		}
 		wruntime.EventsEmit(a.ctx, video.EVT_SAVED_TIMELINE, "-- SAVED --")
 	})
@@ -342,7 +353,7 @@ func (a *App) EnableVideoMenus() {
 	})
 	timelineMenu.AddText("Toggle Vim Mode", keys.CmdOrCtrl("i"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_TOGGLE_VIM_MODE)
-		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, 0)
+		wruntime.EventsEmit(a.ctx, video.EVT_CLIP_MOVE, 0)
 	})
 	vimCommandsMenu := timelineMenu.AddSubmenu("Vim Commands")
 	vimCommandsMenu.AddText("Normal Mode", keys.Key("i"), func(cd *menu.CallbackData) {
@@ -366,17 +377,23 @@ func (a *App) EnableVideoMenus() {
 	vimCommandsMenu.AddText("Execute Edit", keys.Key("enter"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_EXECUTE_EDIT)
 	})
-	vimCommandsMenu.AddText("Move Track Left", keys.Key("h"), func(cd *menu.CallbackData) {
-		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, -1)
-	})
-	vimCommandsMenu.AddText("Move Track Right", keys.Key("l"), func(cd *menu.CallbackData) {
+	vimCommandsMenu.AddText("Move Down Track", keys.Key("j"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, 1)
 	})
+	vimCommandsMenu.AddText("Move Up Track", keys.Key("k"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, -1)
+	})
+	vimCommandsMenu.AddText("Move Track Left", keys.Key("h"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CLIP_MOVE, -1)
+	})
+	vimCommandsMenu.AddText("Move Track Right", keys.Key("l"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_CLIP_MOVE, 1)
+	})
 	vimCommandsMenu.AddText("Move to Beginning of Track", keys.Key("0"), func(cd *menu.CallbackData) {
-		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, -len(a.Timeline.VideoNodes))
+		wruntime.EventsEmit(a.ctx, video.EVT_CLIP_MOVE, -len(a.Timeline.Nodes[0]))
 	})
 	vimCommandsMenu.AddText("Move to End of Track", keys.Key("$"), func(cd *menu.CallbackData) {
-		wruntime.EventsEmit(a.ctx, video.EVT_TRACK_MOVE, len(a.Timeline.VideoNodes))
+		wruntime.EventsEmit(a.ctx, video.EVT_CLIP_MOVE, len(a.Timeline.Nodes[0]))
 	})
 	vimCommandsMenu.AddText("Zoom In Timeline", keys.Shift("+"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_ZOOM_TIMELINE, "in")
@@ -384,10 +401,18 @@ func (a *App) EnableVideoMenus() {
 	vimCommandsMenu.AddText("Zoom Out Timeline", keys.Shift("-"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_ZOOM_TIMELINE, "out")
 	})
+
+	vimCommandsMenu.AddText("Add Timeline Track", keys.Shift("t"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_ADD_TRACK)
+	})
+	vimCommandsMenu.AddText("Remove Timeline Track", keys.Shift("d"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_REMOVE_TRACK)
+	})
+
 	vimCommandsMenu.AddText("Save Timeline", keys.Shift("w"), func(cd *menu.CallbackData) {
 		err := a.SaveTimeline()
 		if err != nil {
-			wruntime.LogError(a.ctx, "could not save timeline")
+			wruntime.LogError(a.ctx, "could not save video")
 		}
 		wruntime.EventsEmit(a.ctx, video.EVT_SAVED_TIMELINE, "-- SAVED --")
 	})
@@ -396,6 +421,9 @@ func (a *App) EnableVideoMenus() {
 	})
 	vimCommandsMenu.AddText("Search Timeline Clip", keys.Shift("f"), func(cd *menu.CallbackData) {
 		wruntime.EventsEmit(a.ctx, video.EVT_SEARCH_TIMELINE_CLIP)
+	})
+	vimCommandsMenu.AddText("Insert Placeholder Clip", keys.Shift("p"), func(cd *menu.CallbackData) {
+		wruntime.EventsEmit(a.ctx, video.EVT_SEARCH_PLACEHOLDER)
 	})
 
 	appMenu := a.AppMenu()

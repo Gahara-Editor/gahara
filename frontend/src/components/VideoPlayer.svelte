@@ -34,7 +34,7 @@
     setCurrentTime,
     resetVideo,
   } = videoStore;
-  let { videoNode, editMode, cutEnd, isTrackPlaying, setIsTrackPlaying } =
+  let { timelineNode, editMode, cutEnd, isTrackPlaying, setIsTrackPlaying } =
     toolingStore;
 
   onMount(() => {
@@ -70,7 +70,7 @@
 
   function handleStop() {
     if (video) video.pause();
-    $currentTime = $videoNode ? $videoNode.start : 0;
+    $currentTime = $timelineNode ? $timelineNode.start : 0;
   }
 
   function handleMute() {
@@ -78,12 +78,12 @@
   }
 
   function handleTimeupdate() {
-    if ($videoNode && $currentTime >= $videoNode.end)
-      EventsEmit("evt_track_move", 1);
+    if ($timelineNode && $currentTime >= $timelineNode.end)
+      EventsEmit("evt_clip_move", 1);
   }
 
   function seekVideo() {
-    if ($videoNode) setCurrentTime($videoNode.start);
+    if ($timelineNode) setCurrentTime($timelineNode.start);
     if ($isTrackPlaying) video.play();
   }
 
@@ -107,8 +107,8 @@
         id="video"
         class="block h-full w-full object-contain bg-gprimary
         rounded-md"
-        src={$videoNode
-          ? $source + `#t=${$videoNode.start},${$videoNode.end}`
+        src={$timelineNode
+          ? $source + `#t=${$timelineNode.start},${$timelineNode.end}`
           : $source}
         bind:this={video}
         bind:duration={$duration}
@@ -131,9 +131,9 @@
   </div>
   <!-- Video Controls -->
   {#if $source}
-    {#if $videoNode}
+    {#if $timelineNode}
       <div class="text-center text-lg font-semibold">
-        {$videoNode.name}
+        {$timelineNode.name}
       </div>
     {/if}
     <div

@@ -16,9 +16,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/k1nho/gahara/ffmpegbuilder"
+	"github.com/k1nho/gahara/internal/audio"
+	"github.com/k1nho/gahara/internal/placeholder"
+	"github.com/k1nho/gahara/internal/timeline"
 	"github.com/k1nho/gahara/internal/video"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+type rawTimeline struct {
+	Nodes [][]json.RawMessage `json:"timeline"`
+}
 
 type Video struct {
 	// ID: the unique identifier of the video
@@ -238,7 +245,7 @@ func (a *App) SaveProjectFiles(projectFiles []Video) error {
 
 // SaveTimeline: save project timeline into the project filesystem
 func (a *App) SaveTimeline() error {
-	if a.Timeline.VideoNodes == nil && len(a.Timeline.VideoNodes) <= 0 {
+	if a.Timeline.Nodes == nil && len(a.Timeline.Nodes) <= 0 {
 		return fmt.Errorf("timeline is empty, could not save timeline")
 	}
 	data, err := json.MarshalIndent(a.Timeline, "", "  ")
@@ -255,8 +262,8 @@ func (a *App) SaveTimeline() error {
 }
 
 // LoadTimeline: retrieve saved project timeline, if any, from filesystem
-func (a *App) LoadTimeline() (video.Timeline, error) {
-	var timeline video.Timeline
+func (a *App) LoadTimeline() (timeline.Timeline, error) {
+	var timeline timeline.Timeline
 	timelinePath := path.Join(a.config.ProjectDir, "timeline.json")
 	if _, err := os.Stat(timelinePath); err != nil {
 		return timeline, fmt.Errorf("no timeline found for this project")
@@ -268,17 +275,64 @@ func (a *App) LoadTimeline() (video.Timeline, error) {
 		return timeline, fmt.Errorf("could not read timeline file")
 	}
 
-	err = json.Unmarshal(bytes, &a.Timeline)
+	rawTimeline := rawTimeline{}
+	err = json.Unmarshal(bytes, &rawTimeline)
 	if err != nil {
 		wruntime.LogError(a.ctx, "could not unmarshal the timeline")
 		return timeline, err
 	}
 
-	if len(a.Timeline.VideoNodes) == 0 {
+	var nodeType struct {
+		Type string `json:"type"`
+	}
+	for i, rawTrack := range rawTimeline.Nodes {
+		a.Timeline.AddTrack()
+		for j, rawNode := range rawTrack {
+			if err := json.Unmarshal(rawNode, &nodeType); err != nil {
+				wruntime.LogError(a.ctx, "could not unmarshal node type")
+				continue
+			}
+
+			switch nodeType.Type {
+			case video.NODE_VIDEO:
+				var videoNode video.VideoNode
+				if err := json.Unmarshal(rawNode, &videoNode); err != nil {
+					wruntime.LogError(a.ctx, "could not unmarshal into video node")
+					continue
+				}
+				if _, err := a.Timeline.Insert(i, j, &videoNode); err != nil {
+					wruntime.LogError(a.ctx, err.Error())
+					continue
+				}
+			case audio.NODE_AUDIO:
+				var audioNode audio.AudioNode
+				if err := json.Unmarshal(rawNode, &audioNode); err != nil {
+					wruntime.LogError(a.ctx, "could not unmarshal into audio node")
+					continue
+				}
+				if _, err := a.Timeline.Insert(i, j, &audioNode); err != nil {
+					wruntime.LogError(a.ctx, err.Error())
+					continue
+				}
+			default:
+				var placeholderNode placeholder.PlaceholderNode
+				if err := json.Unmarshal(rawNode, &placeholderNode); err != nil {
+					wruntime.LogError(a.ctx, "could not unmarshal into placeholder node")
+					continue
+				}
+				if _, err := a.Timeline.Insert(i, j, &placeholderNode); err != nil {
+					wruntime.LogError(a.ctx, err.Error())
+					continue
+				}
+			}
+
+		}
+	}
+
+	if len(a.Timeline.Nodes) == 0 {
 		wruntime.LogInfo(a.ctx, "empty timeline")
 		return timeline, fmt.Errorf("empty timeline")
 	}
-
 	wruntime.LogInfo(a.ctx, "timeline has been loaded!")
 	return a.GetTimeline(), nil
 }
@@ -313,24 +367,36 @@ func (a *App) LoadProjectFiles() ([]Video, error) {
 
 }
 
+func (a *App) ExporterVideoNode() video.VideoNode {
+	return video.VideoNode{}
+}
+
+func (a *App) ExporterAudioNode() audio.AudioNode {
+	return audio.AudioNode{}
+}
+
+func (a *App) ExporterPlaceholderNode() placeholder.PlaceholderNode {
+	return placeholder.PlaceholderNode{}
+}
+
 // GetTimeline: returns the video timeline which is composed of video nodes
-func (a *App) GetTimeline() video.Timeline {
+func (a *App) GetTimeline() timeline.Timeline {
 	return a.Timeline
 }
 
 // InsertInterval: inserts a video node with some interval [a,b]
-func (a *App) InsertInterval(rid string, name string, start, end float64, pos int) (video.VideoNode, error) {
-	return a.Timeline.Insert(rid, name, start, end, pos)
+func (a *App) InsertInterval(tid int, pos int, nodeType string, rid string, name string, start, end float64) (timeline.TimelineNode, error) {
+	return a.Timeline.Insert(tid, pos, timeline.CreateNode(nodeType, rid, name, start, end))
 }
 
 // RemoveInterval: removes a video node with some interval [a,b]
-func (a *App) RemoveInterval(pos int) error {
-	return a.Timeline.Delete(pos)
+func (a *App) RemoveInterval(tid int, pos int) error {
+	return a.Timeline.Delete(tid, pos)
 }
 
 // SplitInterval: splits a video node with some interval [a,b].
-func (a *App) SplitInterval(eventType string, pos int, start, end float64) ([]video.VideoNode, error) {
-	return a.Timeline.Split(eventType, pos, start, end)
+func (a *App) SplitInterval(tid int, pos int, eventType string, start, end float64) ([]timeline.TimelineNode, error) {
+	return a.Timeline.Split(tid, pos, eventType, start, end)
 }
 
 // DeleteRIDReferences: removes all timeline references of a root id
@@ -338,36 +404,36 @@ func (a *App) DeleteRIDReferences(rid string) error {
 	return a.Timeline.DeleteRIDReferences(rid)
 }
 
-func (a *App) RenameVideoNode(pos int, name string) error {
-	return a.Timeline.RenameVideoNode(pos, name)
+func (a *App) RenameVideoNode(tid int, pos int, name string) error {
+	return a.Timeline.RenameVideoNode(tid, pos, name)
 }
 
-func (a *App) ToggleLossless(pos int) error {
-	return a.Timeline.ToggleLossless(pos)
+func (a *App) ToggleLossless(tid, pos int) error {
+	return a.Timeline.ToggleLossless(tid, pos)
 }
 
-func (a *App) MarkAllLossless() error {
-	return a.Timeline.MarkAllLossless()
+func (a *App) MarkAllLossless(tid int) error {
+	return a.Timeline.MarkAllLossless(tid)
 }
 
-func (a *App) UnmarkAllLossless() error {
-	return a.Timeline.UnmarkAllLossless()
+func (a *App) UnmarkAllLossless(tid int) error {
+	return a.Timeline.UnmarkAllLossless(tid)
 }
 
 // ResetTimeline: cleanup timeline state in memory
 func (a *App) ResetTimeline() {
-	a.Timeline = video.NewTimeline()
+	a.Timeline = timeline.NewTimeline()
 }
 
 // GetTrackDuration: retrieves the total video duration of a track
-func (a *App) GetTrackDuration() (float64, error) {
-	if a.Timeline.VideoNodes == nil {
+func (a *App) GetTrackDuration(tid int) (float64, error) {
+	if a.Timeline.Nodes == nil || tid >= len(a.Timeline.Nodes) {
 		return 0, fmt.Errorf("no timeline exists")
 	}
 
 	duration := 0.0
-	for _, videoNode := range a.Timeline.VideoNodes {
-		duration += videoNode.End - videoNode.Start
+	for _, node := range a.Timeline.Nodes[tid] {
+		duration += node.End() - node.Start()
 	}
 	return duration, nil
 }
@@ -428,7 +494,7 @@ func (a *App) FFmpegQuery(queryType string, userOpts video.ProcessingOpts) error
 
 // queryFiltergraph: executes a filtergraph query, currently merge clips
 func (a *App) queryFiltergraph(userOpts video.ProcessingOpts) error {
-	query, err := ffmpegbuilder.MergeClipsQuery(a.FFmpegPath, a.Timeline.VideoNodes, userOpts)
+	query, err := ffmpegbuilder.MergeClipsQuery(a.FFmpegPath, ffmpegbuilder.ExtractVideoNodes(a.Timeline.Nodes[0]), userOpts)
 	if err != nil {
 		return err
 	}
@@ -456,25 +522,27 @@ func (a *App) queryLosslessCut(userOpts video.ProcessingOpts) error {
 		}
 	}()
 
-	for _, videoNode := range a.Timeline.VideoNodes {
+	videoNodes := ffmpegbuilder.ExtractVideoNodes(a.Timeline.Nodes[0])
+
+	for _, videoNode := range videoNodes {
 		if !videoNode.LosslessExport {
 			continue
 		}
 		wg.Add(1)
 		go func(vNode video.VideoNode) {
 			defer wg.Done()
-			userOpts.Filename = vNode.Name
+			userOpts.Filename = vNode.VideoName
 			query, err := ffmpegbuilder.LosslessCutQuery(a.FFmpegPath, vNode, userOpts)
 			if err != nil {
-				msgChannel <- VideoProcessingResult{ID: vNode.ID, Status: Failed, Message: err.Error()}
+				msgChannel <- VideoProcessingResult{ID: vNode.VideoID, Status: Failed, Message: err.Error()}
 				return
 			}
 			err = a.executeFFmpegQuery(query, nil)
 			if err != nil {
-				msgChannel <- VideoProcessingResult{ID: vNode.ID, Name: vNode.Name, Status: Failed, Message: err.Error()}
+				msgChannel <- VideoProcessingResult{ID: vNode.VideoID, Name: vNode.VideoName, Status: Failed, Message: err.Error()}
 				return
 			}
-			msgChannel <- VideoProcessingResult{ID: vNode.ID, Name: vNode.Name, Status: Success, Message: ffmpegbuilder.GetFullOutputPath(userOpts)}
+			msgChannel <- VideoProcessingResult{ID: vNode.VideoID, Name: vNode.VideoName, Status: Success, Message: ffmpegbuilder.GetFullOutputPath(userOpts)}
 		}(videoNode)
 	}
 	wg.Wait()
@@ -538,10 +606,8 @@ func (a *App) executeFFmpegQuery(query string, monitoringOpts *MonitoringOpts) e
 // monitorFFmpegOuput: monitors ffmpeg query progress
 func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser, monitoringOpts *MonitoringOpts) {
 	wruntime.LogInfo(a.ctx, "monitoring FFmpeg query")
-	total, err := a.GetTrackDuration()
-	if err != nil {
-		return
-	}
+
+	a.TrackDuration = 0
 	scanner := bufio.NewScanner(FFmpegOut)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -555,7 +621,16 @@ func (a *App) monitorFFmpegOuput(FFmpegOut io.ReadCloser, monitoringOpts *Monito
 			if timeSeconds < 0 {
 				continue
 			}
-			wruntime.EventsEmit(a.ctx, video.EVT_ENCODING_PROGRESS, (timeSeconds*100)/int(total))
+			// optimize track duration retrieval
+			if a.TrackDuration == 0 {
+				total, err := a.GetTrackDuration(0)
+				if err != nil {
+					return
+				}
+				a.TrackDuration = int(total)
+			}
+
+			wruntime.EventsEmit(a.ctx, video.EVT_ENCODING_PROGRESS, (timeSeconds*100)/a.TrackDuration)
 		}
 		if strings.Contains(line, video.OBV_OUT_TIME) && monitoringOpts.terms[video.OBV_OUT_TIME] {
 			args := strings.Split(line, "=")

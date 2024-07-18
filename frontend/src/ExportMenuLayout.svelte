@@ -14,6 +14,7 @@
   import { EventsOff, EventsOn } from "../wailsjs/runtime/runtime";
   import type { video } from "wailsjs/go/models";
   import { formatSecondsToHMS } from "./lib/utils";
+  import { isNodeVideo } from "./lib/timeline";
   const { setRoute } = router;
   const {
     filename,
@@ -52,7 +53,13 @@
     if ($projectName) setFilename($projectName.replace(/\s+/g, ""));
     GetTimeline()
       .then((timeline) => {
-        videoNodes = [...timeline.video_nodes];
+        let tmpVideoNodes: video.VideoNode[] = [];
+        timeline.timeline.forEach((track) => {
+          track.forEach((node) => {
+            if (isNodeVideo(node)) tmpVideoNodes.push(node);
+          });
+        });
+        videoNodes = [...tmpVideoNodes];
       })
       .catch(() => console.log("could not load timeline"));
     EnableExportMenus();
@@ -84,7 +91,7 @@
   }
 
   function handleCheck(pos: number) {
-    ToggleLossless(pos);
+    ToggleLossless(0, pos);
   }
 
   function handleExport() {

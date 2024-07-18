@@ -78,10 +78,10 @@ func MergeClipsQuery(FFmpegPath string, videoNodes []video.VideoNode, userOpts v
 // LosslessCutQuery: returns the query string to make a lossless cut of a video node
 func LosslessCutQuery(FFmpegPath string, videoNode video.VideoNode, userOpts video.ProcessingOpts) (string, error) {
 	// overwrite filename, if it was passed by default lossy opts
-	userOpts.Filename = videoNode.Name
+	userOpts.Filename = videoNode.VideoName
 
-	querybuilder := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(videoNode.RID).WithInputStartTime(videoNode.Start).
-		WithOutputDuration(videoNode.End - videoNode.Start).WithCodec("copy").WithAvoidNegativeTS("make_zero").
+	querybuilder := NewDefaultFFmpegBuilder(FFmpegPath).WithInputs(videoNode.VideoRID).WithInputStartTime(videoNode.VideoStart).
+		WithOutputDuration(videoNode.VideoEnd - videoNode.VideoStart).WithCodec("copy").WithAvoidNegativeTS("make_zero").
 		WithMovFlags("+faststart").WithOutputs(GetFullOutputPath(userOpts))
 
 	if err := querybuilder.validateLosslessCutQuery(); err != nil {

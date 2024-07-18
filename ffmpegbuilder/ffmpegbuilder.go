@@ -205,12 +205,12 @@ func (f *FFmpegBuilder) ConcatFilter(videoNodes []video.VideoNode) (string, erro
 
 	concatQuery.WriteString("\"")
 	for i, videoNode := range videoNodes {
-		if pos, ok := ridToPos[videoNode.RID]; ok {
-			concatQuery.WriteString(fmt.Sprintf("[%d:v]trim=start=%.4f:end=%.4f,setpts=PTS-STARTPTS,scale=%s[v%d];", pos, videoNode.Start, videoNode.End, f.FilterGraphParams.Scale, i))
+		if pos, ok := ridToPos[videoNode.VideoRID]; ok {
+			concatQuery.WriteString(fmt.Sprintf("[%d:v]trim=start=%.4f:end=%.4f,setpts=PTS-STARTPTS,scale=%s[v%d];", pos, videoNode.VideoStart, videoNode.VideoEnd, f.FilterGraphParams.Scale, i))
 			continue
 		}
-		ridToPos[videoNode.RID] = pos
-		concatQuery.WriteString(fmt.Sprintf("[%d:v]trim=start=%.4f:end=%.4f,setpts=PTS-STARTPTS,scale=%s[v%d];", pos, videoNode.Start, videoNode.End, f.FilterGraphParams.Scale, i))
+		ridToPos[videoNode.VideoRID] = pos
+		concatQuery.WriteString(fmt.Sprintf("[%d:v]trim=start=%.4f:end=%.4f,setpts=PTS-STARTPTS,scale=%s[v%d];", pos, videoNode.VideoStart, videoNode.VideoEnd, f.FilterGraphParams.Scale, i))
 		pos += 1
 	}
 

@@ -6,7 +6,12 @@
     XIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
   import { toolingStore, trackStore } from "./stores";
-  import { RemoveInterval, SplitInterval } from "../wailsjs/go/main/App";
+  import {
+    AddTrack,
+    RemoveInterval,
+    RemoveTrack,
+    SplitInterval,
+  } from "../wailsjs/go/main/App";
   import TrashIcon from "./icons/TrashIcon.svelte";
   import SliceIntervalIcon from "./icons/SliceIntervalIcon.svelte";
   import BoxIntevalIcon from "./icons/BoxIntevalIcon.svelte";
@@ -20,13 +25,19 @@
     editMode,
     cutStart,
     cutEnd,
-    videoNodePos,
-    videoNode,
+    timelineNodePos,
+    timelineNode,
+    trackCursorIdx,
     setEditMode,
     setClipRegister,
     setActionMsg,
   } = toolingStore;
-  const { removeVideoFromTrack, removeAndAddIntervalToTrack } = trackStore;
+  const {
+    addTrack,
+    removeTrack,
+    removeVideoFromTrack,
+    removeAndAddIntervalToTrack,
+  } = trackStore;
 
   let executeEdit = false;
 
@@ -34,47 +45,74 @@
     executeEdit = $editMode !== "select" ? true : false;
   }
 
+  function handleAddTrack() {
+    AddTrack().then(() => {
+      addTrack();
+    });
+  }
+
+  function handleRemoveTrack() {
+    const tid = $trackCursorIdx;
+    RemoveTrack(tid).then(() => {
+      removeTrack(tid);
+    });
+  }
+
   function handleTwoCut() {
-    if ($editMode === "timeline" && $videoNode) {
-      SplitInterval("evt_slice_cut", $videoNodePos, $videoNode.start, $cutEnd)
+    if ($editMode === "timeline" && $timelineNode) {
+      SplitInterval(
+        $trackCursorIdx,
+        $timelineNodePos,
+        "evt_slice_cut",
+        $timelineNode.start,
+        $cutEnd,
+      )
         .then((nodes) => {
           if (nodes.length > 0) {
-            removeAndAddIntervalToTrack(0, $videoNodePos, nodes);
+            removeAndAddIntervalToTrack(0, $timelineNodePos, nodes);
             setTimeout(() => {
-              EventsEmit("evt_track_move", 1);
+              EventsEmit("evt_clip_move", 1);
             }, 120);
           }
         })
-        .catch(() => setActionMsg(`could not cut ${$videoNode.name}`));
+        .catch(() => setActionMsg(`could not cut ${$timelineNode.name}`));
     }
   }
 
   function handleEditAction() {
-    if ($videoNode) {
+    if ($timelineNode) {
       switch ($editMode) {
         case "intervalCut":
-          SplitInterval("intervalCut", $videoNodePos, $cutStart, $cutEnd)
+          SplitInterval(
+            $trackCursorIdx,
+            $timelineNodePos,
+            "intervalCut",
+            $cutStart,
+            $cutEnd,
+          )
             .then((nodes) => {
-              removeAndAddIntervalToTrack(0, $videoNodePos, nodes);
+              removeAndAddIntervalToTrack(0, $timelineNodePos, nodes);
               setTimeout(() => {
-                EventsEmit("evt_track_move", 1);
+                EventsEmit("evt_clip_move", 1);
               }, 120);
             })
-            .catch(() => setActionMsg(`could not cut ${$videoNode.name}`));
+            .catch(() => setActionMsg(`could not cut ${$timelineNode.name}`));
           break;
         case "remove":
-          setClipRegister($videoNode);
-          RemoveInterval($videoNodePos)
+          setClipRegister($timelineNode);
+          RemoveInterval($trackCursorIdx, $timelineNodePos)
             .then(() => {
-              removeVideoFromTrack(0, $videoNode);
+              removeVideoFromTrack($trackCursorIdx, $timelineNode);
               // timeout to catch up UI shifting on first element
-              if ($videoNodePos === 0) {
+              if ($timelineNodePos === 0) {
                 setTimeout(() => {
-                  EventsEmit("evt_track_move", 0);
+                  EventsEmit("evt_clip_move", 0);
                 }, 120);
-              } else EventsEmit("evt_track_move", -1);
+              } else EventsEmit("evt_clip_move", -1);
             })
-            .catch(() => setActionMsg(`could not delete ${$videoNode.name}`));
+            .catch(() =>
+              setActionMsg(`could not delete ${$timelineNode.name}`),
+            );
           break;
       }
     }
@@ -98,12 +136,21 @@
   EventsOn("evt_execute_edit", () => {
     if ($vimMode) handleEditAction();
   });
+
+  EventsOn("evt_add_track", () => {
+    handleAddTrack();
+  });
+  EventsOn("evt_remove_track", () => {
+    handleRemoveTrack();
+  });
   onDestroy(() => {
     EventsOff(
       "evt_toggle_vim_mode",
       "evt_change_vim_mode",
       "evt_splitclip_edit",
       "evt_execute_edit",
+      "evt_add_track",
+      "evt_remove_track",
     );
   });
 </script>
@@ -137,6 +184,12 @@
       on:click={() => updateVimMode((mode) => !mode)}
     >
       <VimIcon class={$vimMode ? "h-5 w-5 text-teal" : "h-5 w-5"} />
+    </button>
+    <button
+      class="bg-gdark px-3 py-0.5 rounded-md flex items-center gap-1 border-2 border-white"
+      on:click={() => handleAddTrack()}
+    >
+      T
     </button>
     <button
       class="bg-gdark px-2 py-1 rounded-md flex items-center gap-1 border-2 border-white"
