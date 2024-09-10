@@ -7,6 +7,7 @@
     videoFiles,
     videoStore,
     projectName,
+    trackStore,
   } from "./stores";
   import ExportMenuLayout from "./ExportMenuLayout.svelte";
   import {
@@ -18,6 +19,7 @@
   import { onDestroy } from "svelte";
   const { route, setRoute } = router;
   const { isProcessingVid } = exportOptionsStore;
+  const { resetTrackStore } = trackStore;
   const { resetVideo } = videoStore;
   const { resetVideoFiles } = videoFiles;
 
@@ -30,6 +32,7 @@
     } catch (err) {
       console.log(err);
     }
+    resetTrackStore();
     WindowSetTitle("Gahara");
   }
 

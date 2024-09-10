@@ -17,23 +17,13 @@
     ArrowSmDownIcon,
   } from "@rgossiaux/svelte-heroicons/solid";
   import type { main } from "../wailsjs/go/models";
-  import {
-    router,
-    videoStore,
-    videoFiles,
-    trackStore,
-    toolingStore,
-  } from "./stores";
+  import { router, videoFiles, trackStore, toolingStore } from "./stores";
   import { onDestroy, onMount } from "svelte";
   import Modal from "./components/Modal.svelte";
   import VideoPlayer from "./components/VideoPlayer.svelte";
   import Timeline from "./components/Timeline.svelte";
   import { draggable } from "./lib/dnd";
-  import {
-    EventsOff,
-    EventsOn,
-    WindowSetTitle,
-  } from "../wailsjs/runtime/runtime";
+  import { EventsOff, EventsOn } from "../wailsjs/runtime/runtime";
   import ToolingLayout from "./ToolingLayout.svelte";
   import FloppyDisk from "./icons/FloppyDisk.svelte";
   import FolderOpenIcon from "./icons/FolderOpenIcon.svelte";
@@ -41,8 +31,8 @@
   import WarningIcon from "./icons/WarningIcon.svelte";
   import { formatSecondsToHMS } from "./lib/utils";
 
-  const { resetVideo } = videoStore;
   const {
+    addTrack,
     addVideoToTrack,
     removeRIDReferencesFromTrack,
     trackTime,
@@ -54,7 +44,6 @@
     removeVideoFile,
     addVideos,
     setVideoFilesError,
-    resetVideoFiles,
   } = videoFiles;
   const { setRoute, route } = router;
   const { actionMessage, setActionMsg } = toolingStore;
@@ -83,8 +72,11 @@
   function loadTimeline() {
     LoadTimeline()
       .then((timeline) => {
-        timeline.video_nodes.forEach((videoNode) => {
-          addVideoToTrack(0, videoNode, -1, "append");
+        timeline.timeline.forEach((track, i) => {
+          addTrack();
+          track.forEach((node) => {
+            addVideoToTrack(i, -1, node, "append");
+          });
         });
       })
       .catch(() => setActionMsg("-- GAHARA --"));

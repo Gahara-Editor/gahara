@@ -1,7 +1,7 @@
 <script lang="ts">
   import { searchListstore } from "../stores";
   import type { video } from "wailsjs/go/models";
-  import { scrollVertical } from "../lib/searchlist";
+  import { scrollVertical } from "../lib/utils";
   export let idx: number;
   export let item: video.VideoNode;
   export let selected: boolean;

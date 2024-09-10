@@ -26,6 +26,7 @@ func getCompatibleRest() []string {
 }
 
 const (
+	NODE_VIDEO = "NODE_VIDEO"
 	// high order query types
 	QUERY_FILTERGRAPH       = "q_filtergraph"
 	QUERY_LOSSLESS_CUT      = "q_lossless_cut"
@@ -60,14 +61,20 @@ const (
 	EVT_EXECUTE_EDIT = "evt_execute_edit"
 	// EVT_PLAY_TRACK: plays the clips on the track (starting from current pos and clip time)
 	EVT_PLAY_TRACK = "evt_play_track"
-	//EVT_TRACK_MOVE: move vim cursor on the current track
+	//EVT_TRACK_MOVE: move vim cursor to a track (up/down)
 	EVT_TRACK_MOVE = "evt_track_move"
+	//EVT_CLIP_MOVE: move vim cursor on the current track (left/right)
+	EVT_CLIP_MOVE = "evt_clip_move"
 	//EVT_UPLOAD_FILE: triggers the native upload file
 	EVT_UPLOAD_FILE = "evt_upload_file"
 	//EVT_OPEN_SEARCH_LIST: opens a search list containing all the uploaded files
 	EVT_OPEN_SEARCH_LIST = "evt_open_search_list"
 	//EVT_YANK_CLIP: copies the selected video node on track
 	EVT_YANK_CLIP = "evt_yank_clip"
+	// EVT_ADD_TRACK: adds a new track
+	EVT_ADD_TRACK = "evt_add_track"
+	// EVT_REMOVE_TRACK: removes a track
+	EVT_REMOVE_TRACK = "evt_remove_track"
 	// EVT_OPEN_RENAME_CLIP_MODAL: opens the rename clip modal
 	EVT_OPEN_RENAME_CLIP_MODAL = "evt_open_rename_clip_modal"
 	// EVT_INTERVAL_CUT: interval cut event
@@ -88,6 +95,8 @@ const (
 	EVT_PROXY_FILE_CREATED = "evt_proxy_file_created"
 	// EVT_SEARCH_TIMELINE_CLIP: opens search list and sets the timeline clip search command (/x)
 	EVT_SEARCH_TIMELINE_CLIP = "evt_search_timeline_clip"
+	// EVT_SEARCH_PLACEHOLDER: opens search list and sets the placeholder command (/p)
+	EVT_SEARCH_PLACEHOLDER = "evt_search_placeholder"
 	//SCALE_256x256: Resolution 256x256
 	SCALE_256x256 = "256x256"
 	//SCALE_316_192: Resolution 316x192
@@ -141,23 +150,20 @@ const (
 )
 
 type VideoNode struct {
+	// NodeType: NODE_VIDEO
+	NodeType string `json:"type"`
 	// Start: the start of the interval
-	Start float64 `json:"start"`
+	VideoStart float64 `json:"start"`
 	// End: the end of the interval
-	End float64 `json:"end"`
+	VideoEnd float64 `json:"end"`
 	// RID: the root ID of the node, that is, the original video from which this nodes derives
-	RID string `json:"rid"`
+	VideoRID string `json:"rid"`
 	// ID: the ID of the video node
-	ID string `json:"id"`
-	// Name: the name given by the user to the clip
-	Name string `json:"name"`
+	VideoID string `json:"id"`
+	// Name: the name given by the user to the video node
+	VideoName string `json:"name"`
 	// Lossless
 	LosslessExport bool `json:"losslessexport"`
-}
-
-type Timeline struct {
-	// VideoNodes: all the video nodes of the timeline
-	VideoNodes []VideoNode `json:"video_nodes"`
 }
 
 type ThumbnailOpts struct {
@@ -186,130 +192,42 @@ type ProcessingOpts struct {
 	VideoFormat string `json:"video_format"`
 }
 
-func NewTimeline() Timeline {
-	return Timeline{VideoNodes: []VideoNode{}}
-}
-
-func createVideoNode(rid string, name string, start, end float64) VideoNode {
-	if name == "" {
-		name = "Node"
-	}
-	return VideoNode{
-		RID:   rid,
-		ID:    strings.Replace(uuid.New().String(), "-", "", -1),
-		Name:  name,
-		Start: start,
-		End:   end,
+func CreateNode(rid string, name string, start, end float64) *VideoNode {
+	return &VideoNode{
+		NodeType:       NODE_VIDEO,
+		VideoRID:       rid,
+		VideoID:        strings.Replace(uuid.New().String(), "-", "", -1),
+		VideoName:      name,
+		VideoStart:     start,
+		VideoEnd:       end,
+		LosslessExport: false,
 	}
 }
 
-func (tl *Timeline) Insert(rid string, name string, start, end float64, pos int) (VideoNode, error) {
-	var videoNode VideoNode
-	if pos < 0 || pos > len(tl.VideoNodes) {
-		return videoNode, fmt.Errorf("insertion position %d is invalid", pos)
-	}
-
-	videoNode = createVideoNode(rid, name, start, end)
-	tl.VideoNodes = slices.Insert(tl.VideoNodes, pos, videoNode)
-
-	return videoNode, nil
+func (v *VideoNode) Type() string {
+	return NODE_VIDEO
+}
+func (v *VideoNode) RID() string {
+	return v.VideoRID
+}
+func (v *VideoNode) ID() string {
+	return v.VideoID
 }
 
-func (tl *Timeline) Delete(pos int) error {
-	if pos < 0 || pos >= len(tl.VideoNodes) {
-		return fmt.Errorf("delete position is invalid")
-	}
-	if len(tl.VideoNodes) == 0 {
-		return fmt.Errorf("there are no video clips to delete in track")
-	}
-	tl.VideoNodes = slices.Delete(tl.VideoNodes, pos, pos+1)
-	return nil
+func (v *VideoNode) Name() string {
+	return v.VideoName
 }
 
-func (tl *Timeline) RenameVideoNode(pos int, name string) error {
-	if pos < 0 || pos >= len(tl.VideoNodes) {
-		return fmt.Errorf("clip position invalid")
-	}
-	if len(tl.VideoNodes) == 0 {
-		return fmt.Errorf("there are no video clips to rename in track")
-	}
-	tl.VideoNodes[pos].Name = name
-	return nil
+func (v *VideoNode) Start() float64 {
+	return v.VideoStart
 }
 
-func (tl *Timeline) ToggleLossless(pos int) error {
-	if pos < 0 || pos >= len(tl.VideoNodes) {
-		return fmt.Errorf("clip position invalid %d", pos)
-	}
-	if len(tl.VideoNodes) == 0 {
-		return fmt.Errorf("there are no video clips to mark")
-	}
-	tl.VideoNodes[pos].LosslessExport = !tl.VideoNodes[pos].LosslessExport
-	return nil
+func (v *VideoNode) End() float64 {
+	return v.VideoEnd
 }
 
-func (tl *Timeline) MarkAllLossless() error {
-	if len(tl.VideoNodes) == 0 {
-		return fmt.Errorf("there are no video clips to mark")
-	}
-
-	for i := range tl.VideoNodes {
-		tl.VideoNodes[i].LosslessExport = true
-	}
-
-	return nil
-}
-
-func (tl *Timeline) UnmarkAllLossless() error {
-	if len(tl.VideoNodes) == 0 {
-		return fmt.Errorf("there are no video clips to mark")
-	}
-
-	for i := range tl.VideoNodes {
-		tl.VideoNodes[i].LosslessExport = false
-	}
-
-	return nil
-}
-
-func (tl *Timeline) Split(eventType string, pos int, start, end float64) ([]VideoNode, error) {
-	nodes := []VideoNode{}
-	if pos < 0 || pos >= len(tl.VideoNodes) {
-		return nodes, fmt.Errorf("split position is invalid")
-	}
-	if len(tl.VideoNodes) == 0 {
-		return nodes, fmt.Errorf("there are no video clips to split in track")
-	}
-
-	splitNode := tl.VideoNodes[pos]
-
-	switch eventType {
-	case EVT_SLICE_CUT:
-		if end > splitNode.Start && end+0.1 < splitNode.End {
-			nodes = append(nodes, createVideoNode(splitNode.RID, splitNode.Name, start, end), createVideoNode(splitNode.RID, splitNode.Name, end+0.1, splitNode.End))
-		}
-	case EVT_INTERVAL_CUT:
-		if start-0.1 > splitNode.Start && end+0.1 < splitNode.End {
-			nodes = append(nodes, createVideoNode(splitNode.RID, splitNode.Name, splitNode.Start, start-0.1), createVideoNode(splitNode.RID, splitNode.Name, start, end),
-				createVideoNode(splitNode.RID, splitNode.Name, end+0.1, splitNode.End))
-		}
-	}
-
-	if len(nodes) <= 0 {
-		return nodes, fmt.Errorf("invalid cut range")
-	}
-	tl.VideoNodes = append(tl.VideoNodes[:pos], append(nodes, tl.VideoNodes[pos+1:]...)...)
-	return nodes, nil
-}
-
-func (tl *Timeline) DeleteRIDReferences(rid string) error {
-	if tl.VideoNodes == nil {
-		return fmt.Errorf("no timeline exists")
-	}
-	tl.VideoNodes = slices.DeleteFunc(tl.VideoNodes, func(vn VideoNode) bool {
-		return vn.RID == rid
-	})
-	return nil
+func (v *VideoNode) Rename(name string) {
+	v.VideoName = name
 }
 
 // GenerateEditThumbnail: generate a thumbnail from a video

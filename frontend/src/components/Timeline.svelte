@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dropzone } from "../lib/dnd";
   import { onDestroy } from "svelte";
-  import type { video } from "wailsjs/go/models";
+  import type { video } from "../../wailsjs/go/models";
   import {
     videoStore,
     toolingStore,
@@ -24,7 +24,16 @@
   } from "../../wailsjs/go/main/App";
   import RenameIcon from "../icons/RenameIcon.svelte";
   import SearchList from "../components/SearchList.svelte";
-  import { formatSecondsToHMS } from "../lib/utils";
+  import { NODE_AUDIO, NODE_PLACEHOLDER } from "../lib/utils";
+  import VideoNode from "./VideoNode.svelte";
+  import AudioNode from "./AudioNode.svelte";
+  import PlaceholderNode from "./PlaceholderNode.svelte";
+  import {
+    scrollToNode,
+    isNodeVideo,
+    type TimelineNode,
+    scrollToTrack,
+  } from "../lib/timeline";
 
   const { isOpen, close, open } = createBooleanStore(false);
   const { setVideoSrc, currentTime, setCurrentTime } = videoStore;
@@ -33,33 +42,35 @@
     cutStart,
     cutEnd,
     editMode,
-    videoNode,
-    videoNodePos,
-    videoNodeWidth,
-    videoNodeName,
-    trackZoom,
+    timelineNode,
+    timelineNodePos,
+    timelineNodeWidth,
+    timelineNodeName,
     adjustTrackZoom,
     playheadPos,
     isMovingPlayhead,
     isMovingCutRangeBox,
     boxLeftBound,
     boxRightBound,
+    cursorColor,
+    trackCursorIdx,
     clipCursorIdx,
     clipRegister,
     setActionMsg,
     setIsOpenSearchList,
     setClipCursorIdx,
     setVimMode,
+    moveTrackCursor,
     moveClipCursor,
     setClipRegister,
     moveCutRangeBox,
     movePlayhead,
     setCutEnd,
     setPlayheadPos,
-    setVideoNode,
-    setVideoNodeName,
-    setVideoNodePos,
-    setVideoNodeWidth,
+    setTimelineNode,
+    setTimelineNodeName,
+    setTimelineNodePos,
+    setTimelineNodeWidth,
     setClipStart,
     setClipEnd,
     setBoxLeftBound,
@@ -74,19 +85,16 @@
     toggleLosslessMarkofClip,
     markAllLossless,
     unmarkAllLossless,
-    resetTrackStore,
   } = trackStore;
   const { setSearchTerm } = searchListstore;
 
-  let selectedID = 0;
   let trackNode: HTMLDivElement;
-  let timelineNode: HTMLDivElement;
+  let currentNode: HTMLDivElement;
   let cutRangeBox: HTMLDivElement;
   let cutRangeSide: "left" | "right" | "middle" | "none";
-  let cursorColor = "#ffffff";
 
   $: {
-    cursorColor =
+    $cursorColor =
       $editMode === "remove"
         ? "#f7768e"
         : $vimMode && $editMode === "select"
@@ -95,12 +103,12 @@
   }
 
   function getTrackWidth() {
-    const track = document.getElementById(`track-${selectedID}`);
+    const track = document.getElementById(`track-${$trackCursorIdx}`);
     return track.clientWidth;
   }
 
   function getTrackLeft() {
-    const trackNode = document.getElementById(`track-${selectedID}`);
+    const trackNode = document.getElementById(`track-${$trackCursorIdx}`);
     return trackNode.getBoundingClientRect().left;
   }
 
@@ -159,7 +167,7 @@
   ) {
     if ($isMovingPlayhead) {
       setPlayheadPos(Math.min(e.clientX - getTrackLeft(), getTrackWidth()));
-      handleVideoNode(e, pos, tVideo);
+      handletimelineNode(e, pos, tVideo);
     }
   }
 
@@ -198,8 +206,8 @@
       let [newBoxLeft, newBoxWidth, trackTime] = [-1, -1, 0];
       const adjustedX =
         e.clientX +
-        timelineNode.scrollLeft -
-        timelineNode.getBoundingClientRect().left;
+        currentNode.scrollLeft -
+        currentNode.getBoundingClientRect().left;
 
       const mousePos = Math.max(
         $boxLeftBound,
@@ -207,9 +215,9 @@
       );
 
       setCurrentTime(
-        $videoNode.start +
-          ($videoNode.end - $videoNode.start) *
-            ((mousePos - $boxLeftBound) / $videoNodeWidth),
+        $timelineNode.start +
+          ($timelineNode.end - $timelineNode.start) *
+            ((mousePos - $boxLeftBound) / $timelineNodeWidth),
       );
 
       switch (cutRangeSide) {
@@ -256,22 +264,25 @@
       currentTarget: EventTarget & HTMLDivElement;
     },
     pos: number,
-    video: video.VideoNode,
+    node: TimelineNode,
   ) {
     setBoxLeftBound(e.currentTarget.offsetLeft);
     setBoxRightBound(e.currentTarget.offsetLeft + e.currentTarget.clientWidth);
     setPlayheadPos(Math.min(e.currentTarget.offsetLeft, getTrackWidth()));
-    setVideoNodeWidth(e.currentTarget.getBoundingClientRect().width);
-    setCurrentTime(video.start);
-    setClipStart(video.start);
-    setClipEnd(video.end);
-    setVideoNode(video);
-    setVideoNodePos(pos);
-    setVideoSrc(video.rid);
+    setTimelineNodeWidth(e.currentTarget.getBoundingClientRect().width);
+    setTimelineNodePos(pos);
     setClipCursorIdx(pos);
+    setVideoSrc(node.rid);
+    setTimelineNode(node);
+
+    if (isNodeVideo(node)) {
+      setCurrentTime(node.start);
+      setClipStart(node.start);
+      setClipEnd(node.end);
+    }
   }
 
-  function handleVideoNode(
+  function handletimelineNode(
     e: MouseEvent & {
       currentTarget: EventTarget & HTMLDivElement;
     },
@@ -283,11 +294,10 @@
     const time =
       video.start + (video.end - video.start) * (mousePos / clipWidth);
     const trackTime =
-      ((e.clientX + timelineNode.scrollLeft) / getTrackWidth()) *
-      $trackDuration;
+      ((e.clientX + currentNode.scrollLeft) / getTrackWidth()) * $trackDuration;
     setVideoSrc(video.rid);
-    setVideoNodePos(pos);
-    setVideoNode(video);
+    setTimelineNodePos(pos);
+    setTimelineNode(video);
     setCurrentTime(time);
     setTrackTime(trackTime);
     setCutEnd(time);
@@ -296,12 +306,12 @@
     setBoxRightBound(e.currentTarget.offsetLeft + e.currentTarget.clientWidth);
   }
 
-  function handleVideoNodeRename() {
-    if ($videoNodeName === "") return;
-    RenameVideoNode($videoNodePos, $videoNodeName)
+  function handletimelineNodeRename() {
+    if ($timelineNodeName === "") return;
+    RenameVideoNode($trackCursorIdx, $timelineNodePos, $timelineNodeName)
       .then(() => {
-        renameClipInTrack(0, $videoNodePos, $videoNodeName);
-        setVideoNodeName("");
+        renameClipInTrack($trackCursorIdx, $timelineNodePos, $timelineNodeName);
+        setTimelineNodeName("");
       })
       .catch(() => setActionMsg("could not rename clip"));
     setVimMode(true);
@@ -310,46 +320,38 @@
 
   function handleKeybindTrackClipMove() {
     if (!$vimMode) return;
-    const videoNodeDiv = document
-      .getElementById(`track-${selectedID}`)
+    const timelineNodeDiv = document
+      .getElementById(`track-${$trackCursorIdx}`)
       ?.querySelector(`div:nth-child(${$clipCursorIdx + 1})`)
       ?.querySelector("div");
-    if (videoNodeDiv) {
-      videoNodeDiv.click();
-      scrollToNode(videoNodeDiv);
+    if (timelineNodeDiv) {
+      timelineNodeDiv.click();
+      scrollToNode(timelineNodeDiv);
     }
   }
 
-  function scrollToNode(node: HTMLDivElement) {
-    const timelineContainer = document.getElementById("timeline");
-    const timelineRect = timelineContainer.getBoundingClientRect();
-    const nodeRect = node.getBoundingClientRect();
-
-    const isNodeVisible =
-      nodeRect.left >= timelineRect.left &&
-      nodeRect.right <= timelineRect.right;
-
-    if (!isNodeVisible) {
-      const scrollX =
-        nodeRect.left - timelineRect.left + timelineContainer.scrollLeft;
-      timelineContainer.scrollTo({
-        left: scrollX,
-        behavior: "smooth",
-      });
-    }
+  function handleKeybindTrackMove() {
+    const trackNode = document.getElementById(`track-${$trackCursorIdx}`);
+    if (trackNode) scrollToTrack(trackNode);
   }
 
   EventsOn("evt_open_rename_clip_modal", () => {
-    if ($videoNode) {
+    if ($timelineNode) {
       setVimMode(false);
       open();
     }
   });
   EventsOn("evt_rename_clip", () => {
     setVimMode(false);
-    handleVideoNodeRename();
+    handletimelineNodeRename();
   });
   EventsOn("evt_track_move", (inc: number) => {
+    moveTrackCursor(inc);
+    moveClipCursor(0);
+    handleKeybindTrackClipMove();
+    handleKeybindTrackMove();
+  });
+  EventsOn("evt_clip_move", (inc: number) => {
     moveClipCursor(inc);
     handleKeybindTrackClipMove();
   });
@@ -366,27 +368,36 @@
       setIsOpenSearchList(true);
     }
   });
+  EventsOn("evt_search_placeholder", () => {
+    if ($vimMode) {
+      setVimMode(false);
+      setSearchTerm("/p ");
+      setIsOpenSearchList(true);
+    }
+  });
   EventsOn("evt_yank_clip", () => {
-    if ($videoNode) {
-      setClipRegister($videoNode);
-      setActionMsg(`YANKED: ${$videoNode.name}`);
+    if ($timelineNode) {
+      setClipRegister($timelineNode);
+      setActionMsg(`YANKED: ${$timelineNode.name}`);
     }
   });
   EventsOn("evt_insertclip_edit", () => {
     if ($clipRegister) {
       InsertInterval(
+        $trackCursorIdx,
+        $timelineNodePos,
+        $timelineNode.type,
         $clipRegister.rid,
         $clipRegister.name,
         $clipRegister.start,
         $clipRegister.end,
-        $videoNodePos,
       )
         .then((tVideo) => {
-          addVideoToTrack(0, tVideo, $videoNodePos);
-          setVideoNode(tVideo);
+          addVideoToTrack($trackCursorIdx, $timelineNodePos, tVideo);
+          setTimelineNode(tVideo);
           setVideoSrc(tVideo.rid);
           setCurrentTime(tVideo.start);
-          setActionMsg(`PASTED: ${$videoNode.name}`);
+          setActionMsg(`PASTED: ${$timelineNode.name}`);
         })
         .catch(() =>
           toolingStore.setActionMsg(
@@ -405,17 +416,17 @@
   });
 
   EventsOn("evt_toggle_lossless", () => {
-    if ($videoNode) {
-      ToggleLossless($videoNodePos)
+    if ($timelineNode) {
+      ToggleLossless(0, $timelineNodePos)
         .then(() => {
-          toggleLosslessMarkofClip(0, $videoNodePos);
+          toggleLosslessMarkofClip(0, $timelineNodePos);
         })
         .catch((err) => setActionMsg(err));
     }
   });
 
   EventsOn("evt_mark_all_lossless", () => {
-    MarkAllLossless()
+    MarkAllLossless(0)
       .then(() => {
         markAllLossless();
         setActionMsg("-- MARKED CLIPS --");
@@ -424,7 +435,7 @@
   });
 
   EventsOn("evt_unmark_all_lossless", () => {
-    UnmarkAllLossless()
+    UnmarkAllLossless(0)
       .then(() => {
         unmarkAllLossless();
         setActionMsg("-- UNMARKED CLIPS --");
@@ -437,6 +448,7 @@
       "evt_open_rename_clip_modal",
       "evt_rename_clip",
       "evt_track_move",
+      "evt_clip_move",
       "evt_open_search_list",
       "evt_yank_clip",
       "evt_insertclip_edit",
@@ -445,8 +457,9 @@
       "evt_toggle_lossless",
       "evt_mark_all_lossless",
       "evt_unmark_all_lossless",
+      "evt_search_timeline_clip",
+      "evt_search_placeholder",
     );
-    resetTrackStore();
     resetToolingStore();
   });
 </script>
@@ -454,7 +467,7 @@
 <div
   class="timeline h-full w-full bg-gdark border-t-2 border-t-white flex flex-col gap-4 pt-4 pb-4 px-1 relative overflow-x-scroll overflow-y-hidden"
   id="timeline"
-  bind:this={timelineNode}
+  bind:this={currentNode}
   use:dropzone={{}}
   on:mouseup={() => handleEditModeMouseUp()}
 >
@@ -470,11 +483,11 @@
     <div slot="content">
       <div class="flex flex-col items-center justify-center gap-2">
         <p class="text-center font-semibold">
-          rename video clip ({$videoNode.name})
+          rename video clip ({$timelineNode.name})
         </p>
         <input
           type="text"
-          bind:value={$videoNodeName}
+          bind:value={$timelineNodeName}
           class="p-1 rounded-sm text-black"
           autocorrect="off"
           autocomplete="off"
@@ -489,7 +502,7 @@
       <button
         class="flex items-center justify-center rounded-lg bg-gblue0 font-semibold text-white px-4 py-1.5 hover:bg-gblue transition ease-in-out duration-200 border-2 border-white gap-2"
         on:click={() => {
-          handleVideoNodeRename();
+          handletimelineNodeRename();
         }}
       >
         <span>Rename</span>
@@ -512,73 +525,44 @@
     </div>
   {/if}
 
-  <!-- VIDEO TRACKS -->
+  <!-- TRACKS -->
   <!-- TODO Create an actual id for a track -->
   {#each $trackStore as track, id (id)}
     <div
       bind:this={trackNode}
-      class="h-28 flex relative bg-gprimary gap-1 p-2 w-max"
+      class={`h-36 flex relative ${
+        $trackCursorIdx === id
+          ? "border-gyellow border-[3px]"
+          : "border-white border-0"
+      } bg-gblue0 gap-1 p-2 w-max rounded-md`}
       id={`track-${id}`}
     >
-      <!-- Video Track -->
-      {#each track as tVideo, pos (tVideo.id)}
-        <div
-          animate:flip={{ duration: 100 }}
-          out:slide={{ axis: "x", duration: 100, easing: cubicOut }}
-        >
-          {#if $editMode === "intervalCut" && $videoNode && $videoNode.id === tVideo.id}
-            <div
-              class="absolute border-yellow-500 border-2 h-24 cursor-grab"
-              style={`width: ${
-                (tVideo.end - tVideo.start) * $trackZoom < 120
-                  ? 120
-                  : (tVideo.end - tVideo.start) * $trackZoom
-              }px; left: ${$boxLeftBound}px`}
-              bind:this={cutRangeBox}
-              id="cut-range"
-              on:mousemove={(e) => {
-                handleEditModeMouseMove(e, pos, tVideo);
-              }}
-              on:mousedown={(e) => {
-                handleEditModeMouseDown(e);
-              }}
-            ></div>
-          {/if}
-          <!-- Video Nodes of this track -->
+      {#if track.length > 0}
+        <!-- Nodes -->
+        {#each track as node, pos (node.id)}
           <div
-            id={`videoNode-${tVideo.id}`}
-            class="h-full bg-obsbg border-white border-2 cursor-pointer select-none overflow-hidden flex flex-col justify-start"
-            style={`width: ${
-              (tVideo.end - tVideo.start) * $trackZoom < 120
-                ? 120
-                : (tVideo.end - tVideo.start) * $trackZoom
-            }px; border-color: ${
-              $videoNode && $videoNode.id === tVideo.id
-                ? cursorColor
-                : "#ffffff"
-            }; `}
-            on:click={(e) => handleBoxRender(e, pos, tVideo)}
-            on:mousemove={(e) => {
-              handleEditModeMouseMove(e, pos, tVideo);
-            }}
-            on:mousedown={(e) => {
-              handleEditModeMouseDown(e);
-            }}
+            animate:flip={{ duration: 100 }}
+            out:slide={{ axis: "x", duration: 100, easing: cubicOut }}
           >
-            <p>
-              {tVideo.name}
-            </p>
-            <p>
-              {formatSecondsToHMS(tVideo.end - tVideo.start)}
-            </p>
-            {#if tVideo.losslessexport}
-              <span class="w-6 font-bold text-lg text-center text-gyellow">
-                M
-              </span>
+            {#if isNodeVideo(node)}
+              <VideoNode
+                {node}
+                {pos}
+                {cutRangeBox}
+                {handleBoxRender}
+                {handleEditModeMouseDown}
+                {handleEditModeMouseMove}
+              />
+            {:else if node.type === NODE_AUDIO}
+              <AudioNode {node} {pos} {cutRangeBox} />
+            {:else if node.type === NODE_PLACEHOLDER}
+              <PlaceholderNode {node} {pos} {cutRangeBox} {handleBoxRender} />
             {/if}
           </div>
-        </div>
-      {/each}
+        {/each}
+      {:else}
+        <span>T</span>
+      {/if}
     </div>
   {/each}
 </div>

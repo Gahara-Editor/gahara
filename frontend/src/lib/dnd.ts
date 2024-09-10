@@ -1,6 +1,7 @@
 import { draggedVideo, trackStore, videoStore, toolingStore } from "../stores";
 import type { main } from "../../wailsjs/go/models";
 import { InsertInterval } from "../../wailsjs/go/main/App";
+import { NODE_VIDEO } from "./utils";
 
 export function draggable(node: HTMLDivElement, data: main.Video) {
   let state = data;
@@ -63,21 +64,23 @@ export function dropzone(node: HTMLDivElement, opts) {
   ) {
     e.preventDefault();
     e.currentTarget.classList.remove(state.dragOverClass);
-    const videoID = `${draggedVideo.value().filepath}/${
+    const videoRID = `${draggedVideo.value().filepath}/${
       draggedVideo.value().name
     }${draggedVideo.value().extension}`;
 
     // TODO: handle insertions at an specific part of the timeline
     InsertInterval(
-      videoID,
+      0,
+      0,
+      NODE_VIDEO,
+      videoRID,
       draggedVideo.value().name,
       0,
       draggedVideo.value().duration,
-      0,
     )
       .then((tVideo) => {
         // TODO: add to different tracks dynamically for now 0
-        trackStore.addVideoToTrack(0, tVideo, 0);
+        trackStore.addVideoToTrack(0, 0, tVideo);
         toolingStore.setVideoNode(tVideo);
         videoStore.setCurrentTime(tVideo.start);
       })

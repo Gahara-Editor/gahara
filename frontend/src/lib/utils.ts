@@ -1,4 +1,40 @@
-import type { main, video } from "../../wailsjs/go/models";
+import type { placeholder, audio, main, video } from "../../wailsjs/go/models";
+
+export const NODE_VIDEO = "NODE_VIDEO";
+export const NODE_AUDIO = "NODE_AUDIO";
+export const NODE_PLACEHOLDER = "NODE_PLACEHOLDER";
+export const NODE_TEXT = "NODE_TEXT";
+
+export type ListType =
+  | main.Video
+  | video.VideoNode
+  | audio.AudioNode
+  | placeholder.PlaceholderNode;
+
+export function isVideoItem(unit: ListType): unit is video.VideoNode {
+  return unit && (unit as video.VideoNode).losslessexport !== undefined;
+}
+
+export function isVideo(unit: ListType): unit is main.Video {
+  return unit && (unit as main.Video).duration !== undefined;
+}
+
+export function isPlaceholderItem(
+  unit: ListType,
+): unit is placeholder.PlaceholderNode {
+  return (
+    unit && (unit as placeholder.PlaceholderNode).type === NODE_PLACEHOLDER
+  );
+}
+
+export const placeholderItem: placeholder.PlaceholderNode = {
+  type: NODE_PLACEHOLDER,
+  id: "",
+  rid: "",
+  start: 0,
+  end: 300,
+  name: "placeholder",
+};
 
 export function formatSecondsToHMS(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -13,12 +49,19 @@ export function formatSecondsToHMS(seconds: number): string {
   return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
 }
 
-export type ListType = main.Video | video.VideoNode;
+export function scrollVertical(node: HTMLLIElement) {
+  const listContainer = document.getElementById("content-wrap");
+  const listRect = listContainer.getBoundingClientRect();
+  const nodeRect = node.getBoundingClientRect();
 
-export function isVideoNode(unit: ListType): unit is video.VideoNode {
-  return (unit as video.VideoNode).losslessexport !== undefined;
-}
+  const isNodeVisible =
+    nodeRect.top >= listRect.top && nodeRect.bottom <= listRect.bottom;
 
-export function isVideo(unit: ListType): unit is main.Video {
-  return (unit as main.Video).duration !== undefined;
+  if (!isNodeVisible) {
+    const scrollY = nodeRect.top - listRect.top + listContainer.scrollTop;
+    listContainer.scrollTo({
+      top: scrollY,
+      behavior: "smooth",
+    });
+  }
 }
